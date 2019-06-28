@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SSL-setup</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<h1><b>X509</b> Certificates and Encodings</h1>
+	<p>
+		At its core an <b>X.509</b> certificate is a digital document that has
+		been encoded and/or digitally signed according to RFC 5280. In fact,
+		the term X.509 certificate usually refers to the IETF’s PKIX
+		Certificate and CRL Profile of the X.509 v3 certificate standard, as
+		specified in RFC 5280, commonly referred to as PKIX for Public Key
+		Infrastructure (X.509).
+	</p>
+
+	<p>The first thing we have to understand is what each type of file
+		extension is. There is a lot of confusion about what DER, PEM, CRT,
+		and CER are and many have incorrectly said that they are all
+		interchangeable. While in certain cases some can be interchanged the
+		best practice is to identify how your certificate is encoded and then
+		label it correctly. Correctly labeled certificates will be much easier
+		to manipulate.</p>
+	<h2>Encodings (also used as extensions)</h2>
+
+	<ul>
+		<li><b>.DER</b> = The DER extension is used for binary DER
+			encoded certificates. These files may also bear the CER or the CRT
+			extension. Proper English usage would be “I have a DER encoded
+			certificate” not “I have a DER certificate”.</li>
+		<li><b>.PEM</b> = The PEM extension is used for different types
+			of X.509v3 files which contain ASCII (Base64) armored data prefixed
+			with a “—– BEGIN …” line.</li>
+	</ul>
+
+	<h2>Common Extensions</h2>
+	<ul>
+		<li><b>.CRT</b> = The CRT extension is used for certificates. The
+			certificates may be encoded as binary DER or as ASCII PEM. The CER
+			and CRT extensions are nearly synonymous. Most common among *nix
+			systems</li>
+		<li><b>.CER</b> = alternate form of .crt (Microsoft Convention)
+			You can use MS to convert .crt to .cer (.both DER encoded .cer, or
+			base64[PEM] encoded .cer) The .cer file extension is also recognized
+			by IE as a command to run a MS cryptoAPI command (specifically
+			rundll32.exe cryptext.dll,CryptExtOpenCER) which displays a dialogue
+			for importing and/or viewing certificate contents.
+		<li><b>.KEY</b> = The KEY extension is used both for public and
+			private PKCS#8 keys. The keys may be encoded as binary DER or as
+			ASCII PEM.
+	</ul>
+	<p>The only time CRT and CER can safely be interchanged is when the
+		encoding type can be identical. (ie PEM encoded CRT = PEM encoded CER)
+	</p>
+	<h2>Standard X.509 <b>v3</b> Certificate Extension Reference</h2>
+	<p>An <b>X.509 v3</b> certificate contains an extension field that permits
+		any number of additional fields to be added to the certificate.
+		Certificate extensions provide a way of adding information such as
+		alternative subject names and usage restrictions to certificates.</p>
+
+	<h1><b>PKCS#12</b> format</h1>
+	<p>
+		In cryptography, <b>PKCS #12</b> defines an <b>archive file format</b>
+		for storing many cryptography objects as a single file. It is commonly
+		used to bundle a <b>private key</b> with its <b>X.509 certificate</b>
+		or to bundle all the members of a chain of trust. A PKCS #12 file may
+		be encrypted and signed. PKCS #12 is one of the family of standards
+		called Public-Key Cryptography Standards (PKCS) published by RSA
+		Laboratories.
+	</p>
+	<p>The filename extension for PKCS #12 files is ".p12" or
+		".pfx".[3]</p>
+	<p>The internal storage containers, called "SafeBags", may also be
+		encrypted and signed. A few SafeBags are predefined to store
+		certificates, private keys and CRLs. Another SafeBag is provided to
+		store any other data at individual implementer's choice.[1][2]</p>
+
+	<h1>SSL tools</h1>
+	<h2>OpenSSL</h2>
+	<p>OpenSSL is an open source implementation of the SSL and TLS
+		protocols. It provides an encryption transport layer on top of the
+		normal communications layer, allowing it to be intertwined with many
+		network applications and services. The default SSL Profile in the
+		Cloud Management Console has a generic Common Name. When associating
+		an SSL profile to a Gateway Cluster, if using the default SSL Profile,
+		your application making API calls may fail to verify the host name it
+		is connecting to against the certificate presented. In this case, you
+		can generate a new self-signed certificate that represents a Common
+		Name your application can validate. This topic tells you how to
+		generate self-signed SSL certificate requests using the OpenSSL
+		toolkit to enable HTTPS connections.</p>
+	<h2>KeyTool</h2>
+	<p>keytool is a key and certificate management utility. It allows
+		users to administer their own public/private key pairs and associated
+		certificates for use in self-authentication (where the user
+		authenticates himself/herself to other users/services) or data
+		integrity and authentication services, using digital signatures. It
+		also allows users to cache the public keys (in the form of
+		certificates) of their communicating peers. A certificate is a
+		digitally signed statement from one entity (person, company, etc.),
+		saying that the public key (and some other information) of some other
+		entity has a particular value. (See Certificates.) When data is
+		digitally signed, the signature can be verified to check the data
+		integrity and authenticity. Integrity means that the data has not been
+		modified or tampered with, and authenticity means the data indeed
+		comes from whoever claims to have created and signed it.</p>
+
+	<h1>SSL general setup</h1>
+	<h2>
+		Put OpenSSL generated certificates in <b>JAVA</b> KeyStore
+	</h2>
+	<p>
+		Source: <a
+			href="https://blog.jgc.org/2011/06/importing-existing-ssl-keycertificate.html">here</a><br>
+	</p>
+	<p>
+		1. Suppose you have a certificate and key in PEM format. The key is
+		named
+		<code>host.key</code>
+		and the certificate
+		<code>host.crt</code>
+		.
+	</p>
+	<p>2. The first step is to convert them into a single PKCS12 file
+		using the command:</p>
+	<div class="code-box">openssl pkcs12 -export -in host.crt -inkey
+		host.key > host.p12</div>
+	<p>You will be asked for various passwords (the password to access
+		the key (if set) and then the password for the PKCS12 file being
+		created).</p>
+	<p>3. Then import the PKCS12 file into a keystore using the
+		command:</p>
+	<div class="code-box">keytool -importkeystore -srckeystore
+		host.p12 -destkeystore host.jks -srcstoretype pkcs12</div>
+	<p>You now have a keystore named host.jks containing the
+		certificate/key you need. For the sake of completeness here's the
+		output of a full session I performed: $ openssl pkcs12 -export -in
+		host.crt -inkey host.key > host.p12 Enter pass phrase for host.key:
+		Enter Export Password: Verifying - Enter Export Password: $ keytool
+		-importkeystore -srckeystore host.p12 -destkeystore host.jks
+		-srcstoretype pkcs12 Enter destination keystore password: Re-enter new
+		password: Enter source keystore password: Entry for alias 1
+		successfully imported. Import command completed: 1 entries
+		successfully imported, 0 entries failed or cancelled</p>
+		<h1>Top links</h1>
+		<div>
+		<a href="https://medium.freecodecamp.org/how-to-get-https-working-
+		on-your-local-development-environment-in-5-minutes-7af615770eec">local certificates</a>
+		</div>
+		<div>
+		<a href="https://www.wowza.com/docs/how-to-import-an-existing-ssl-certificate-
+		and-private-key">wrapping certificate and ley into keystore</a>
+		</div>	
+	<h1>back-up</h1>
+	<p>This is text</p>
+	<div>
+		<div class="code-box">
+			<comment>#create key</comment>
+			<div>openssl pkcs12 -export -in host.crt -inkey host.key >
+				host.p12</div>
+		</div>
+	</div>
+
+</body>
+</html>
