@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root:SSL_configuration>
+	<encryption_protocol>TLSv1.3</encryption_protocol>
+	<keystore_pathname>config/s2/keystore.jks</keystore_pathname>
+	<keystore_password>rDfe4_!xef</keystore_password>
+</root:SSL_configuration>

@@ -11,11 +11,9 @@ import java.util.concurrent.Executors;
 
 import javax.net.ssl.SSLContext;
 
+import com.qx.back.base.reactive.QxIOReactive;
 import com.qx.back.io.ssl.SSL_Endpoint;
-import com.qx.back.io.ssl.SSL_EndpointConfig;
-import com.qx.back.io.ssl.SSL_Inbound;
 import com.qx.back.io.ssl.SSL_Module;
-import com.qx.back.io.ssl.SSL_Outbound;
 
 
 public class SSL_Test03 {
@@ -23,11 +21,8 @@ public class SSL_Test03 {
 	public static void main(String[] args) throws Exception {
 
 		System.out.println("Starting...");
-		SSLContext context = SSL_Module.createContext("config/server/SSL_config.xml");
+		SSLContext context = SSL_Module.createContext("config/SSL_config.xml");
 		InetSocketAddress address = new InetSocketAddress("localhost", 1024);
-
-		SSL_EndpointConfig serverConfig = SSL_EndpointConfig.load("config/server/ssl-test-config.xml");
-		SSL_EndpointConfig clientConfig = SSL_EndpointConfig.load("config/client/ssl-test-config.xml");
 		
 
 		/* server part */
@@ -37,6 +32,33 @@ public class SSL_Test03 {
 		AsynchronousServerSocketChannel server = AsynchronousServerSocketChannel.open(group)
 				.bind(address, 64);
 
+		
+		QxIOReactive serverInbound = new QxIOReactive() {
+			
+			@Override
+			public void onReceived(ByteBuffer buffer) {
+				int n = buffer.limit();
+				byte[] bytes = new byte[n];
+				buffer.get(bytes);
+				System.out.println("[SSL_Test03] "+new String(bytes));
+			}
+		};
+		
+		
+		QxIOReactive serverOutbound = new QxIOReactive() {
+			
+			private int count = 0;
+
+			@Override
+			public void onReceived(ByteBuffer buffer) {
+				if(count<4) {
+					buffer.put("Hi! this is server side!!".getBytes());
+					count++;	
+				}
+			}
+		};
+		
+		
 		Thread thread = new Thread(new Runnable() {
 
 			@Override
@@ -47,38 +69,15 @@ public class SSL_Test03 {
 						ExecutorService internal = Executors.newSingleThreadExecutor();
 
 
-						SSL_Endpoint serverEndPoint = new SSL_TestEndpoint(
-								
-								new SSL_Inbound() {
-									@Override
-									public boolean onReceived(ByteBuffer buffer) {
-										int n = buffer.limit();
-										byte[] bytes = new byte[n];
-										buffer.get(bytes);
-										System.out.println("[SSL_Test03] "+new String(bytes));
-										return true; // always receiving
-									}
-								},
-								new SSL_Outbound() {
-									
-									private int count = 0;
-
-									@Override
-									public boolean onSending(ByteBuffer buffer) {
-										if(count<4) {
-											buffer.put("Hi! this is server side!!".getBytes());
-											count++;	
-										}
-										return false;
-									}
-								},
-								context, channel, internal, serverConfig);
+						SSL_Endpoint serverEndPoint = new SSL_Endpoint("server", 
+								serverInbound, serverOutbound, context, 
+								channel, 10,
+								internal, true, true);
 
 						// start
-						serverEndPoint.receive();
+						serverEndPoint.unwrap();
 					}
 					catch (InterruptedException | ExecutionException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
@@ -99,41 +98,42 @@ public class SSL_Test03 {
 
 		ExecutorService internal2 = Executors.newSingleThreadExecutor();
 
+		
+		QxIOReactive clientInbound = new QxIOReactive() {
+			
+			@Override
+			public void onReceived(ByteBuffer buffer) {
+				int n = buffer.limit();
+				byte[] bytes = new byte[n];
+				buffer.get(bytes);
+				System.out.println("[SSL_Test03] "+new String(bytes));
+			}
+		};
 
+		QxIOReactive clientOutbound = new QxIOReactive() {
+			private int count = 0;
 
-		SSL_Endpoint client = new SSL_TestEndpoint(
-				new SSL_Inbound() {
-					@Override
-					public boolean onReceived(ByteBuffer buffer) {
-						int n = buffer.limit();
-						byte[] bytes = new byte[n];
-						buffer.get(bytes);
-						System.out.println("[SSL_Test03] "+new String(bytes));
-						return true; // only receiving after emitting
-					}
-				},
-				new SSL_Outbound() {
+			@Override
+			public void onReceived(ByteBuffer buffer) {
+				byte[] messageBytes = "Hi this is client!!".getBytes();
+				if(count<4 && buffer.remaining()>messageBytes.length) {
+					buffer.put(messageBytes);
+				}
+				count++;
+			}
+		};
 
-					private int count = 0;
-
-					@Override
-					public boolean onSending(ByteBuffer buffer) {
-						byte[] messageBytes = "Hi this is client!!".getBytes();
-						if(count<4 && buffer.remaining()>messageBytes.length) {
-							buffer.put(messageBytes);
-						}
-						count++;
-						return true; // ignored
-					}
-				},
-				context, channel, internal2, clientConfig);
+		SSL_Endpoint client = new SSL_Endpoint("client",
+				clientInbound, clientOutbound, context, 
+				channel, 10,
+				internal2, false, true);
 
 
 		new Thread(new Runnable() {
 
 			@Override
 			public void run() {
-				client.send();
+				client.wrap();
 			}
 		}).start();
 	}

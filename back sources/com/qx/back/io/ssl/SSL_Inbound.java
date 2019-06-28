@@ -15,13 +15,16 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
 
+import com.qx.back.base.reactive.QxIOReactive;
+
+
 /**
  * Inbound part of the SSL_Endpoint
  * 
  * @author pc
  *
  */
-public abstract class SSL_Inbound {
+public class SSL_Inbound {
 
 	private String name;
 
@@ -49,68 +52,6 @@ public abstract class SSL_Inbound {
 
 	private AsynchronousSocketChannel channel;
 
-	private long timeout;
-
-	private ExecutorService internalExecutor;
-
-	protected ByteBuffer networkBuffer;
-
-	
-	private boolean isClosed;
-	
-	/**
-	 * Locking mechanism for protection of pending reading.
-	 */
-	private AtomicBoolean isReadPending;
-
-	/**
-	 * Another unwrap request has been notified while <code>isRunning</code>. Flag
-	 * allows to keep track of notification
-	 */
-	private boolean isUnwrapRequested = false;
-
-	private boolean isVerbose;
-
-	/**
-	 * 
-	 * @param channel
-	 */
-	public SSL_Inbound() {
-		super();
-		isClosed = false;
-	}
-
-
-	protected void bind(
-			SSL_Endpoint endpoint, 
-			SSLEngine engine, 
-			AsynchronousSocketChannel channel,
-			long timeout,
-			ExecutorService internalExecutor,
-			boolean isVerbose) {
-
-		// bind 0
-		this.endpoint = endpoint;
-		this.engine = engine;
-		this.channel = channel;
-		this.timeout = timeout;
-		this.internalExecutor = internalExecutor;
-		this.isVerbose = isVerbose;		
-
-		name = endpoint.getName() + ".inbound";
-
-		applicationBuffer = ByteBuffer.allocate(APPLICATION_INPUT_STARTING_CAPACITY);
-
-		/* < > */
-
-		/* <buffers> */
-		networkBuffer = ByteBuffer.allocate(NETWORK_INPUT_STARTING_CAPACITY);
-
-		isReadPending = new AtomicBoolean(false);
-		/* </buffer> */	
-	}
-
-
 	/**
 	 * <h1>First Key building-up method</h1>
 	 * <p> Based on the "don't call us, we'll call you" principle. 
@@ -130,7 +71,68 @@ public abstract class SSL_Inbound {
 	 * that you <b>CANNOT chain reception operation by calling <code>
 	 * resumeReceiving()</code></b>in the method implementation.
 	 */
-	public abstract boolean onReceived(ByteBuffer buffer);
+	private QxIOReactive receiver;
+
+	private long timeout;
+
+	private ExecutorService internalExecutor;
+
+	protected ByteBuffer networkBuffer;
+
+	private boolean isClosed;
+
+	/**
+	 * Locking mechanism for protection of pending reading.
+	 */
+	private AtomicBoolean isReadPending;
+
+	/**
+	 * Another unwrap request has been notified while <code>isRunning</code>. Flag
+	 * allows to keep track of notification
+	 */
+	private boolean isUnwrapRequested = false;
+
+	private boolean isVerbose;
+
+	/**
+	 * 
+	 * @param channel
+	 */
+	public SSL_Inbound(
+			QxIOReactive receiver,
+			SSL_Endpoint endpoint, 
+			SSLEngine engine, 
+			AsynchronousSocketChannel channel,
+			long timeout,
+			ExecutorService internalExecutor,
+			boolean isVerbose) {
+		super();
+
+		// bind 0
+		this.receiver = receiver;
+		this.endpoint = endpoint;
+		this.engine = engine;
+		this.channel = channel;
+		this.timeout = timeout;
+		this.internalExecutor = internalExecutor;
+		this.isVerbose = isVerbose;		
+
+		name = endpoint.getName() + ".inbound";
+
+		applicationBuffer = ByteBuffer.allocate(APPLICATION_INPUT_STARTING_CAPACITY);
+
+		/* < > */
+
+		/* <buffers> */
+		networkBuffer = ByteBuffer.allocate(NETWORK_INPUT_STARTING_CAPACITY);
+
+		isReadPending = new AtomicBoolean(false);
+		/* </buffer> */	
+
+		isClosed = false;
+	}
+
+
 
 
 
@@ -179,7 +181,15 @@ public abstract class SSL_Inbound {
 					@Override
 					public void completed(Integer nBytes, Void attachment) {
 						if(nBytes==-1) {
-							close();
+
+							try {
+								engine.closeInbound();
+							} 
+							catch (SSLException e) {
+								e.printStackTrace();
+							}
+
+							endpoint.close();
 						}
 						else if(!isClosed){
 							try{
@@ -336,7 +346,7 @@ public abstract class SSL_Inbound {
 				case NEED_WRAP:
 
 					/* trigger outbound wrapping */
-					endpoint.getOutbound().requestWrap();
+					endpoint.wrap();
 					return false; // no need to read more data
 
 
@@ -344,7 +354,7 @@ public abstract class SSL_Inbound {
 
 					/* end of handshaking, start independent working of inbound/outbound, so
 					 * trigger outbound wrapping just to ensure it is active*/
-					endpoint.getOutbound().requestWrap();
+					endpoint.unwrap();
 
 					/* could notify end of handshaking here */
 					// -> continue on next case
@@ -399,7 +409,8 @@ public abstract class SSL_Inbound {
 						applicationBuffer.flip();
 
 						// apply
-						onReceived(applicationBuffer);
+						// we ignore the fact that receiver can potentially read more bytes
+						receiver.onReceived(applicationBuffer);
 
 						// since endPoint.onReceived read ALL data, nothing left, so clear
 						/* application input buffer -> READ */

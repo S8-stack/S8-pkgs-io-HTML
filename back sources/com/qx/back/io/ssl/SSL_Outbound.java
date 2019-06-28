@@ -14,6 +14,8 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
 
+import com.qx.back.base.reactive.QxIOReactive;
+
 
 /**
  * <p>
@@ -23,7 +25,9 @@ import javax.net.ssl.SSLException;
  * @author pc
  *
  */
-public abstract class SSL_Outbound {
+public class SSL_Outbound {
+
+	private QxIOReactive sender;
 
 	private String name;
 
@@ -74,15 +78,17 @@ public abstract class SSL_Outbound {
 	 * 
 	 * @param channel
 	 */
-	public SSL_Outbound() {
+	public SSL_Outbound(QxIOReactive sender, 
+			SSL_Endpoint endpoint, 
+			SSLEngine engine, 
+			AsynchronousSocketChannel channel, 
+			long timeout, 
+			ExecutorService internalExecutor, 
+			boolean isVerbose) {
 		super();
-		isClosed = false;
-	}
 
-
-
-	protected void bind(SSL_Endpoint endpoint, SSLEngine engine, AsynchronousSocketChannel channel, 
-			long timeout, ExecutorService internalExecutor, boolean isVerbose) {
+		this.sender = sender;
+		
 		// bind 0
 		this.endpoint = endpoint;
 		this.engine = engine;
@@ -116,6 +122,8 @@ public abstract class SSL_Outbound {
 
 		// initial setup
 		isWritePending = new AtomicBoolean(false);
+
+		isClosed = false;
 	}
 
 
@@ -141,12 +149,6 @@ public abstract class SSL_Outbound {
 	}
 
 
-	/**
-	 * <h1>Second Key building-up method</h1>
-	 * @param buffer present a ByteBuffer ready for reading
-	 * @return
-	 */
-	public abstract boolean onSending(ByteBuffer buffer);
 
 
 
@@ -241,7 +243,7 @@ public abstract class SSL_Outbound {
 		 */
 		applicationBuffer.compact();
 
-		onSending(applicationBuffer);
+		sender.onReceived(applicationBuffer);
 
 		/* application output buffer -> READ */
 		applicationBuffer.flip();
@@ -331,7 +333,7 @@ public abstract class SSL_Outbound {
 					/*
 					 * Trigger the other side
 					 */
-					endpoint.getInbound().requestUnwrap();
+					endpoint.unwrap();
 
 					/*
 					 * We are in handshaking phase, so just flush what's have already been wrapped
@@ -342,28 +344,28 @@ public abstract class SSL_Outbound {
 
 
 				case FINISHED: 
-					
+
 					switch(wrapResult.getStatus()) {
 
 					case CLOSED: 
 						return false;
-						
+
 					case BUFFER_OVERFLOW:
 					case BUFFER_UNDERFLOW:
 						return true; // not supposed to happen
-						
+
 					case OK:
-					
+
 						/*
 						 * End of handshaking, start independent working of inbound/outbound. Since
 						 * Inbound MIGHT have been left in idle mode, wake it up to ensure it is active
 						 */
-						endpoint.getInbound().requestUnwrap();
+						endpoint.unwrap();
 						// -> continue to next case
 						break;
 					}
 
-					
+
 
 				case NOT_HANDSHAKING: // application data
 
@@ -409,7 +411,7 @@ public abstract class SSL_Outbound {
 
 
 					case OK:
-						
+
 						switch(wrapResult.getStatus()) {
 
 						case CLOSED: 
@@ -419,7 +421,7 @@ public abstract class SSL_Outbound {
 							 * unsafeWrap after that
 							 */
 							return false;
-							
+
 						case BUFFER_OVERFLOW:
 						case BUFFER_UNDERFLOW:
 						case OK:
@@ -451,7 +453,7 @@ public abstract class SSL_Outbound {
 				e.printStackTrace();
 			}
 			close();
-			
+
 			// Everything went wrong, so stop wrapping...
 			return false;
 		}
@@ -465,21 +467,21 @@ public abstract class SSL_Outbound {
 	 * operation could not be completed because it was already closed.
 	 */
 	public void close() {
-		
+
 		// Signals that no more outbound application data will be sent on this SSLEngine.
 		//engine.closeOutbound();
-		
+
 		/*
 		System.out.println("SSL_Outbound: closing outbound");
 
 		if(endpoint.isVerbose()) {
-			
+
 		}
-		*/
+		 */
 		//isClosed = true;
-		
+
 	}
-	
+
 
 
 
