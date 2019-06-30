@@ -36,7 +36,7 @@ public class SSL_Test03 {
 		QxIOReactive serverInbound = new QxIOReactive() {
 			
 			@Override
-			public void onReceived(ByteBuffer buffer) {
+			public void on(ByteBuffer buffer) {
 				int n = buffer.limit();
 				byte[] bytes = new byte[n];
 				buffer.get(bytes);
@@ -50,7 +50,7 @@ public class SSL_Test03 {
 			private int count = 0;
 
 			@Override
-			public void onReceived(ByteBuffer buffer) {
+			public void on(ByteBuffer buffer) {
 				if(count<4) {
 					buffer.put("Hi! this is server side!!".getBytes());
 					count++;	
@@ -75,7 +75,7 @@ public class SSL_Test03 {
 								internal, true, true);
 
 						// start
-						serverEndPoint.unwrap();
+						serverEndPoint.resume();
 					}
 					catch (InterruptedException | ExecutionException e) {
 						e.printStackTrace();
@@ -102,7 +102,7 @@ public class SSL_Test03 {
 		QxIOReactive clientInbound = new QxIOReactive() {
 			
 			@Override
-			public void onReceived(ByteBuffer buffer) {
+			public void on(ByteBuffer buffer) {
 				int n = buffer.limit();
 				byte[] bytes = new byte[n];
 				buffer.get(bytes);
@@ -114,7 +114,7 @@ public class SSL_Test03 {
 			private int count = 0;
 
 			@Override
-			public void onReceived(ByteBuffer buffer) {
+			public void on(ByteBuffer buffer) {
 				byte[] messageBytes = "Hi this is client!!".getBytes();
 				if(count<4 && buffer.remaining()>messageBytes.length) {
 					buffer.put(messageBytes);
@@ -133,7 +133,7 @@ public class SSL_Test03 {
 
 			@Override
 			public void run() {
-				client.wrap();
+				client.resume();
 			}
 		}).start();
 	}

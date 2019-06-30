@@ -10,6 +10,8 @@ import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLParameters;
 
 import com.qx.back.base.reactive.QxIOReactive;
+import com.qx.back.io.ssl.inbound.SSL_Inbound;
+import com.qx.back.io.ssl.outbound.SSL_Outbound;
 
 
 /**
@@ -52,18 +54,22 @@ public class SSL_Endpoint {
 	private boolean isServerSide;
 
 	protected SSL_Phase phase;
+	
+	public SSLEngine engine;
 
-	private AsynchronousSocketChannel channel;
+	public AsynchronousSocketChannel channel;
 
-	private ExecutorService internalExecutor;
+	public ExecutorService internalExecutor;
 
-	private boolean isVerbose;
+	public boolean isVerbose;
 
-	private boolean isClosed;
+	public SSL_Inbound inbound;
 
-	private SSL_Inbound inbound;
+	public SSL_Outbound outbound;
 
-	private SSL_Outbound outbound;
+	public boolean isClosed;
+	
+	
 
 	/**
 	 * 
@@ -101,7 +107,7 @@ public class SSL_Endpoint {
 		isClosed = false;
 
 		// engine
-		SSLEngine engine = createEngine(context, isServerSide);
+		engine = createEngine(context, isServerSide);
 
 		// start inbound
 		inbound = new SSL_Inbound(receiver, this, engine, 
@@ -121,19 +127,9 @@ public class SSL_Endpoint {
 	}
 
 
-	public void resumeSending() {
-		outbound.requestWrap();
-	}
-
-	/**
-	 * 
-	 */
-	public void unwrap() {
-		inbound.requestUnwrap();
-	}
-
-	public void wrap() {
-		outbound.requestWrap();
+	public void resume() {
+		inbound.resume();
+		outbound.resume();
 	}
 
 
@@ -194,7 +190,6 @@ public class SSL_Endpoint {
 	}
 
 	public void close() {
-
 		isClosed = true;
 	}
 
@@ -211,4 +206,6 @@ public class SSL_Endpoint {
 	public boolean isClosed() {
 		return isClosed;
 	}
+	
+	
 }

@@ -1,0 +1,85 @@
+package com.qx.back.io.ssl.outbound;
+
+import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousSocketChannel;
+import java.nio.channels.CompletionHandler;
+import java.nio.channels.NotYetConnectedException;
+import java.nio.channels.ReadPendingException;
+import java.nio.channels.ShutdownChannelGroupException;
+import java.util.concurrent.TimeUnit;
+
+public class Flushing extends SSL_OutboundMode {
+
+	private AsynchronousSocketChannel channel;
+
+	private long timeout;
+
+	private boolean isVerbose;
+	
+	private ByteBuffer networkBuffer;
+
+	public Flushing(SSL_Outbound outbound) {
+		super(outbound);
+	}
+
+	@Override
+	public void bind() {
+		channel = outbound.channel;
+		timeout = outbound.timeout;
+		isVerbose = outbound.isVerbose;
+		networkBuffer = outbound.networkBuffer;
+	}
+
+	@Override
+	public SSL_OutboundMode run() {
+
+
+		/* (switch back to read mode) for AIO.write */
+		networkBuffer.flip();
+
+		// if there is actually new bytes, send them
+		if(networkBuffer.hasRemaining()) {
+			try {
+				channel.write(networkBuffer, timeout, TimeUnit.SECONDS, null, 
+						new CompletionHandler<Integer, Void>() {
+
+					@Override
+					public void completed(Integer nBytes, Void attachment) {
+
+						/* 
+						 * Everything might not have been written, 
+						 * so compact (and switch to write mode) */
+						networkBuffer.compact();
+
+
+						if(nBytes==-1) {
+							if(isVerbose) {
+								System.out.println("Failed to flush all remaingin data when closing");
+							}
+							// end up here
+						}
+						else {
+							// keep flushing until all is gone
+							outbound.run(Flushing.this);
+						}
+					}
+
+					@Override
+					public void failed(Throwable exc, Void attachment) {
+						if(isVerbose) {
+							exc.printStackTrace();
+						}
+					}
+				});
+			}
+			catch (IllegalArgumentException | ReadPendingException |
+					NotYetConnectedException | ShutdownChannelGroupException e) {
+				if(isVerbose) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return null;
+	}
+
+}
