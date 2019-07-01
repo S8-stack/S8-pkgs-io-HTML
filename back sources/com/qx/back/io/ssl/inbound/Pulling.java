@@ -7,15 +7,12 @@ import java.nio.channels.NotYetConnectedException;
 import java.nio.channels.ReadPendingException;
 import java.nio.channels.ShutdownChannelGroupException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 
 
-public class Pulling extends SSL_InboundMode {
-
-	private boolean isVerbose;
+class Pulling extends SSL_InboundMode {
 
 
 	private SSLEngine engine;
@@ -25,112 +22,129 @@ public class Pulling extends SSL_InboundMode {
 	private AsynchronousSocketChannel channel;
 
 	private long timeout;
+	
+	private SSL_Inbound inbound;
 
-	private SSL_InboundMode unwrapping, closing;
+	private Unwrapping unwrapping;
+	private Closing closing;
 
-	private AtomicBoolean isReadPending;
+	private String name;
+	private boolean isVerbose;
 
-
-	public Pulling(SSL_Inbound inbound) {
-		super(inbound);
-
-
-
+	public Pulling() {
+		super();
 	}
 
 	@Override
-	public void bind() {
+	public void bind(SSL_Inbound inbound) {
+		
+		this.name = inbound.name;
+		this.inbound = inbound;
+		
 		// setup
 		this.engine = inbound.engine;
 		this.channel = inbound.channel;
-		this.networkBuffer = inbound.networkBuffer;
 		this.timeout = inbound.timeout;
-		this.isVerbose = inbound.isVerbose;
 
 		// other states
 		this.unwrapping = inbound.unwrapping;
 		this.closing = inbound.closing;
+		
+		isVerbose = inbound.isVerbose;
 	}
 
-
-	@Override
-	public SSL_InboundMode run() {
-
-		/*
-		 * Can start directly (protected by SSL_Inbound isRunning atomic boolean)
-		 */
-
-		try {
+	
+	public class Task extends SSL_InboundMode.Task {
+	
+		public Task() {
+			super();
+		}
+		
+		@Override
+		public SSL_InboundMode.Task run() {
 
 			/*
-			 * prepare for reception. From javadoc: "this method after writing data from a
-			 * buffer in case the write was incomplete" -> is always the case: 1) Underflow
-			 * : incomplete packet 2) OK: successfully read this packet, but reading next
-			 * packet is required
+			 * Can start directly (protected by SSL_Inbound isRunning atomic boolean)
 			 */
-			/* network input buffer -> WRITE */
-			networkBuffer.compact();		
+			if(isVerbose) {
+				System.out.println("\t--->"+name+" is pulling... ");
+			}
 
-			channel.read(networkBuffer, timeout, TimeUnit.SECONDS, null, 
-					new CompletionHandler<Integer, Void>() {
+			try {
 
-				@Override
-				public void completed(Integer nBytes, Void attachment) {
+				/*
+				 * prepare for reception. From javadoc: "this method after writing data from a
+				 * buffer in case the write was incomplete" -> is always the case: 1) Underflow
+				 * : incomplete packet 2) OK: successfully read this packet, but reading next
+				 * packet is required
+				 */
+				/* network input buffer -> WRITE */
+				networkBuffer.compact();		
 
-					// unlock possibility to read
-					isReadPending.set(false);
+				channel.read(networkBuffer, timeout, TimeUnit.SECONDS, null, 
+						new CompletionHandler<Integer, Void>() {
 
-					/* network input buffer -> READ */
-					networkBuffer.flip();
+					@Override
+					public void completed(Integer nBytes, Void attachment) {
 
-					if(nBytes==-1) {
-						/* SSLEngine JAVA documentation: 
-						 * If for some reason the peer closes the communication link without sending the
-						 * proper SSL/TLS closure message, the application can detect the end-of-stream
-						 * and can signal the engine via closeInbound() that there will no more inbound
-						 * messages to process
-						 */
-						try {
-							engine.closeInbound();
-						} 
-						catch (SSLException e) {
+						/* network input buffer -> READ */
+						networkBuffer.flip();
+
+						if(nBytes==-1) {
+							/* SSLEngine JAVA documentation: 
+							 * If for some reason the peer closes the communication link without sending the
+							 * proper SSL/TLS closure message, the application can detect the end-of-stream
+							 * and can signal the engine via closeInbound() that there will no more inbound
+							 * messages to process
+							 */
+							try {
+								engine.closeInbound();
+							} 
+							catch (SSLException e) {
+								e.printStackTrace();
+							}
+							inbound.run(closing.new Task());
+						}
+						else if(nBytes>0){
+							// everything is fine, so resume unwrapping
+							inbound.run(unwrapping.new Task());
+						}		
+						else { // no new bytes, so retry pulling
+							inbound.run(Pulling.Task.this);
+						}
+					}
+
+					@Override
+					public void failed(Throwable e, Void attachment) {
+						if(isVerbose) {
 							e.printStackTrace();
 						}
-						inbound.run(closing);
+						// initiate closing procedure
+						inbound.run(closing.new Task());
 					}
-					else if(nBytes>0){
-						// everything is fine, so resume unwrapping
-						inbound.run(unwrapping);
-					}		
-					else { // no new bytes, so retry pulling
-						inbound.run(Pulling.this);
-					}
-				}
-
-				@Override
-				public void failed(Throwable e, Void attachment) {
-					if(isVerbose) {
-						e.printStackTrace();
-					}
-					// initiate closing procedure
-					inbound.run(closing);
-				}
-			});	
-		}
-		catch (IllegalArgumentException |
-				ReadPendingException |
-				NotYetConnectedException |
-				ShutdownChannelGroupException e) {
-
-			if(isVerbose) {
-				e.printStackTrace();
+				});	
 			}
-			inbound.run(closing);
+			catch (IllegalArgumentException |
+					ReadPendingException |
+					NotYetConnectedException |
+					ShutdownChannelGroupException e) {
+
+				if(isVerbose) {
+					e.printStackTrace();
+				}
+				inbound.run(closing.new Task());
+			}
+
+			// end of the road, to be continued when AIO-CompletionHandler completes...
+			return null;
+
 		}
-
-		// end of the road, to be continued when AIO-CompletionHandler completes...
-		return null;
-
+		
 	}
+
+	public void setNetworkBuffer(ByteBuffer buffer) {
+		networkBuffer = buffer;
+	}
+	
 
 }

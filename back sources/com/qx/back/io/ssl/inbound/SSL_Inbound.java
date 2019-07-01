@@ -29,10 +29,6 @@ public class SSL_Inbound {
 	 */
 	public final static int APPLICATION_INPUT_STARTING_CAPACITY = 17408;
 
-	/**
-	 * always maintained cleared
-	 */
-	public ByteBuffer applicationBuffer;
 
 	/**
 	 * Typical required NETWORK_INPUT_STARTING_CAPACITY is 16709. Instead, we add 
@@ -72,7 +68,6 @@ public class SSL_Inbound {
 
 	public ExecutorService internalExecutor;
 
-	public ByteBuffer networkBuffer;
 
 	public boolean isVerbose;
 
@@ -85,12 +80,11 @@ public class SSL_Inbound {
 	/**
 	 * pre-defined modes
 	 */
-	public SSL_InboundMode 
-	pull, 
-	requestWrapping,
-	delegatesRunning, 
-	unwrapping,
-	closing;
+	public Pulling pulling;
+	public RequestWrapping requestWrapping;
+	public RunningTask delegatesRunning;
+	public Unwrapping unwrapping;
+	public Closing closing;
 
 
 	/**
@@ -118,29 +112,50 @@ public class SSL_Inbound {
 		this.isVerbose = isVerbose;		
 
 		name = endpoint.getName() + ".inbound";
-		
+
+
+		// create modes
+		pulling = new Pulling();
+		requestWrapping = new RequestWrapping();
+		delegatesRunning = new RunningTask();
+		unwrapping = new Unwrapping();
+		closing = new Closing();
+
+		// binding modes
+		pulling.bind(this);
+		requestWrapping.bind(this);
+		delegatesRunning.bind(this);
+		unwrapping.bind(this);
+		closing.bind(this);
+
+
 		/* <buffers> */
-		
-		applicationBuffer = ByteBuffer.allocate(APPLICATION_INPUT_STARTING_CAPACITY);
-		
-		networkBuffer = ByteBuffer.allocate(NETWORK_INPUT_STARTING_CAPACITY);
+
+		ByteBuffer applicationBuffer = ByteBuffer.allocate(APPLICATION_INPUT_STARTING_CAPACITY);
+		setApplicationBuffer(applicationBuffer);
+		// left in write mode
+
+		ByteBuffer networkBuffer = ByteBuffer.allocate(NETWORK_INPUT_STARTING_CAPACITY);
+		networkBuffer.flip(); // left in read mode
+		setNetworkBuffer(networkBuffer);
 
 		/* </buffer> */
 
-		// create modes
-		pull = new Pulling(this);
+
 
 		isRunning = new AtomicBoolean(false);
+
+
 	}
 
-	
+
 	public void resume() {
 		if(isRunning.compareAndSet(false, true)) {
-			run(unwrapping);	
+			run(unwrapping.new Task());	
 		}
 	}
-	
-	
+
+
 	/**
 	 * (Available to SSL_InboundMode ONLY)
 	 * 
@@ -148,7 +163,7 @@ public class SSL_Inbound {
 	protected void stop() {
 		isRunning.set(false);
 	}
-	
+
 	/**
 	 * <p>
 	 * (Available to SSL_InboundMode ONLY)
@@ -161,13 +176,25 @@ public class SSL_Inbound {
 	 * If during an re-handshaking, start is called again, it will have no effect since 
 	 * inbound will already be running
 	 * </p>
-	 * @param mode
+	 * @param task
 	 */
-	protected void run(SSL_InboundMode mode) {
-		while(mode!=null) {
-			mode = mode.run();
+	protected void run(SSL_InboundMode.Task task) {
+		while(task!=null) {
+			task = task.run();
 		}
 	}
-	
+
+
+
+	protected void setNetworkBuffer(ByteBuffer buffer) {
+		pulling.setNetworkBuffer(buffer);
+		unwrapping.setNetworkBuffer(buffer);
+	}
+
+
+	public void setApplicationBuffer(ByteBuffer buffer) {
+		unwrapping.setApplicationBuffer(buffer);
+	}
+
 
 }

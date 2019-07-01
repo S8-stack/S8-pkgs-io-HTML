@@ -1,25 +1,28 @@
 package com.qx.back.io.ssl.inbound;
 
-public abstract class SSL_InboundMode {
+abstract class SSL_InboundMode {
 
-	public SSL_Inbound inbound;
 	
-	public SSL_InboundMode(SSL_Inbound inbound) {
+	public SSL_InboundMode() {
 		super();
-		this.inbound = inbound;
 	}
 
 	
 	/**
 	 * 
 	 */
-	public abstract void bind();
+	public abstract void bind(SSL_Inbound inbound);
 	
 	
-	/**
-	 * 
-	 * @return
-	 */
-	public abstract SSL_InboundMode run();
+	public abstract class Task {
+		
+		/**
+		 * 
+		 * @return
+		 */
+		public abstract SSL_InboundMode.Task run();		
+	}
+	
+
 	
 }

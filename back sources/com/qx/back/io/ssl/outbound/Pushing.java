@@ -22,78 +22,97 @@ public class Pushing extends SSL_OutboundMode {
 
 	private ByteBuffer networkBuffer;
 
-	private SSL_OutboundMode wrapping, closing;
+	private SSL_Outbound outbound;
 
-	public Pushing(SSL_Outbound outbound) {
-		super(outbound);
+	private Wrapping wrapping;
+	
+	public Closing closing;
+
+	public Pushing() {
+		super();
 	}
 
 	@Override
-	public void bind() {
-
+	public void bind(SSL_Outbound outbound) {
+		this.outbound = outbound;
+		
 		endpoint = outbound.endpoint;
 		channel = outbound.channel;
 		timeout = outbound.timeout;
 		isVerbose = outbound.isVerbose;
-
-		// buffers
-		networkBuffer = outbound.networkBuffer;
 
 		// modes
 		wrapping = outbound.wrapping;
 		closing = outbound.closing;
 	}
 
-	@Override
-	public SSL_OutboundMode run() {
+	
+	
+	/**
+	 * 
+	 * @author pc
+	 *
+	 */
+	public class Task extends SSL_OutboundMode.Task {
+		
+		@Override
+		public Task run() {
 
-		/* (switch back to read mode) for AIO.write */
-		networkBuffer.flip();
+		
+			/* (switch back to read mode) for AIO.write */
+			networkBuffer.flip();
 
-		try {
-			channel.write(networkBuffer, timeout, TimeUnit.SECONDS, null, 
-					new CompletionHandler<Integer, Void>() {
+			try {
+				channel.write(networkBuffer, timeout, TimeUnit.SECONDS, null, 
+						new CompletionHandler<Integer, Void>() {
 
-				@Override
-				public void completed(Integer nBytes, Void attachment) {
+					@Override
+					public void completed(Integer nBytes, Void attachment) {
 
-					/* 
-					 * Everything might not have been written, 
-					 * so compact (and switch to write mode) */
-					networkBuffer.compact();
+						/* 
+						 * Everything might not have been written, 
+						 * so compact (and switch to write mode) */
+						networkBuffer.compact();
 
 
-					if(nBytes==-1) {
+						if(nBytes==-1) {
+							endpoint.isClosed = true;
+							outbound.run(closing.new Task());
+						}
+						/*
+						 * Even if nothing has been written, we'll add so new bytes before retrying
+						 */
+						else {
+							outbound.run(wrapping.new Task());
+						}
+					}
+
+					@Override
+					public void failed(Throwable exc, Void attachment) {
+						if(isVerbose) {
+							exc.printStackTrace();
+						}
 						endpoint.isClosed = true;
-						outbound.run(closing);
+						outbound.run(closing.new Task());
 					}
-					/*
-					 * Even if nothing has been written, we'll add so new bytes before retrying
-					 */
-					else {
-						outbound.run(wrapping);
-					}
-				}
-
-				@Override
-				public void failed(Throwable exc, Void attachment) {
-					if(isVerbose) {
-						exc.printStackTrace();
-					}
-					endpoint.isClosed = true;
-					outbound.run(closing);
-				}
-			});
-		}
-		catch (IllegalArgumentException | ReadPendingException |
-				NotYetConnectedException | ShutdownChannelGroupException e) {
-			if(isVerbose) {
-				e.printStackTrace();
+				});
 			}
-			endpoint.isClosed = true;
-			outbound.run(closing);
-		}
+			catch (IllegalArgumentException | ReadPendingException |
+					NotYetConnectedException | ShutdownChannelGroupException e) {
+				if(isVerbose) {
+					e.printStackTrace();
+				}
+				endpoint.isClosed = true;
+				outbound.run(closing.new Task());
+			}
 
-		return null; // stop here and resume by AIO callback
+			return null; // stop here and resume by AIO callback
+		}
 	}
+	
+
+	public void setNetworkBuffer(ByteBuffer buffer) {
+		networkBuffer = buffer;
+	}
+	
 }

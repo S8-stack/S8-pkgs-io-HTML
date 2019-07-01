@@ -126,9 +126,24 @@ public class SSL_Endpoint {
 		return name;
 	}
 
+	public void start() {
+		/*
+		 * This choice determines who begins the handshaking process as well as which
+		 * type of messages should be sent by each party. The method
+		 * setUseClientMode(boolean) configures the mode. Once the initial handshaking
+		 * has started, an SSLEngine can not switch between client and server modes,
+		 * even when performing renegotiations.
+		 */
+		if(isServerSide) {
+			inbound.resume();		
+		}
+		else {
+			outbound.resume();	
+		}
+	}
 
 	public void resume() {
-		inbound.resume();
+		inbound.resume();	
 		outbound.resume();
 	}
 

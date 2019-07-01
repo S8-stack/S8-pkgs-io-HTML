@@ -36,8 +36,6 @@ public class SSL_Outbound {
 	 */
 	public final static int APPLICATION_OUTPUT_STARTING_CAPACITY = 32768;
 
-	public ByteBuffer applicationBuffer;
-
 
 	public AsynchronousSocketChannel channel;
 
@@ -56,12 +54,14 @@ public class SSL_Outbound {
 	public final static int NETWORK_OUTPUT_STARTING_CAPACITY = 32768;
 
 
-	protected ByteBuffer networkBuffer;
-
-
 	private AtomicBoolean isRunning;
 
-	public SSL_OutboundMode wrapping, pushing, flushing, closing, runningTasks, requestUnwrapping;
+	public Wrapping wrapping;
+	public Pushing pushing;
+	public Flushing flushing;
+	public Closing closing;
+	public RunningDelegates runningTasks;
+	public RequestUnwrapping requestUnwrapping;
 
 
 
@@ -94,23 +94,40 @@ public class SSL_Outbound {
 		/* <buffers> */
 
 
+
+		// create modes
+		pushing = new Pushing();
+		flushing = new Flushing();
+		requestUnwrapping = new RequestUnwrapping();
+		runningTasks = new RunningDelegates();
+		wrapping = new Wrapping();
+		closing = new Closing();
+
+		// binding modes
+		pushing.bind(this);
+		flushing.bind(this);
+		requestUnwrapping.bind(this);
+		runningTasks.bind(this);
+		wrapping.bind(this);
+		closing.bind(this);
+		
+		
 		/* 
 		 * Left in read mode outside retrieve state. So initialize with nothing to read
 		 */
-		applicationBuffer = ByteBuffer.allocate(APPLICATION_OUTPUT_STARTING_CAPACITY);
+		ByteBuffer applicationBuffer = ByteBuffer.allocate(APPLICATION_OUTPUT_STARTING_CAPACITY);
 		applicationBuffer.position(0);
 		applicationBuffer.limit(0);
+		setApplicationBuffer(applicationBuffer);
 
 		/* </buffer> */
 
-
-
 		// set parameters
-
-
-		networkBuffer = ByteBuffer.allocate(NETWORK_OUTPUT_STARTING_CAPACITY);		
+		ByteBuffer networkBuffer = ByteBuffer.allocate(NETWORK_OUTPUT_STARTING_CAPACITY);		
 		networkBuffer.position(0);
 		networkBuffer.limit(0);
+		setNetworkBuffer(networkBuffer);
+		
 
 		// initial setup
 		isRunning = new AtomicBoolean(false);
@@ -129,9 +146,9 @@ public class SSL_Outbound {
 	 * </p>
 	 * @param mode
 	 */
-	protected void run(SSL_OutboundMode mode) {
-		while(mode!=null) {
-			mode = mode.run();
+	protected void run(SSL_OutboundMode.Task task) {
+		while(task!=null) {
+			task = task.run();
 		}
 	}
 
@@ -142,19 +159,34 @@ public class SSL_Outbound {
 	public void resume() {
 		/* Prevent from double triggering from the exterior */
 		if(isRunning.compareAndSet(false, true)) {
-			run(wrapping);
+			run(wrapping.new Task());
 		}
 	}
 
-	
+
 	/**
 	 * <p>Available to SSL_OutboundMode ONLY </p>
 	 */
 	protected void stop() {
 		isRunning.set(true);
 	}
+
+
+	/**
+	 * Set buffer 
+	 * 
+	 * @param buffer
+	 */
+	protected void setNetworkBuffer(ByteBuffer buffer) {
+		pushing.setNetworkBuffer(buffer);
+		flushing.setNetworkBuffer(buffer);
+		wrapping.setNetworkBuffer(buffer);
+		closing.setNetworkBuffer(buffer);
+	}
 	
-	
-	
+	protected void setApplicationBuffer(ByteBuffer buffer) {
+		wrapping.setApplicationBuffer(buffer);
+		closing.setApplicationBuffer(buffer);
+	}
 
 }

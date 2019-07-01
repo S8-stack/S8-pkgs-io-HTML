@@ -10,32 +10,43 @@ public class Closing extends SSL_InboundMode {
 	private SSL_Endpoint endpoint;
 	
 	private SSLEngine engine;
-
-	public Closing(SSL_Inbound inbound) {
-		super(inbound);
+	
+	
+	public Closing() {
+		super();
 		
 	}
 
 	@Override
-	public void bind() {
+	public void bind(SSL_Inbound inbound) {
 		engine = inbound.engine;
 		endpoint = inbound.endpoint;
 	}
 
-	@Override
-	public SSL_InboundMode run() {
-		
-		try {
-			engine.closeInbound();
-		} 
-		catch (SSLException e) {
-			e.printStackTrace();
+	
+	public class Task extends SSL_InboundMode.Task {
+	
+		public Task() {
+			super();
 		}
-		engine.closeOutbound();
 		
-		endpoint.close();
-		
-		return null;
+		@Override
+		public SSL_InboundMode.Task run() {
+			
+			try {
+				engine.closeInbound();
+			} 
+			catch (SSLException e) {
+				e.printStackTrace();
+			}
+			engine.closeOutbound();
+			
+			endpoint.close();
+			
+			return null;
+		}
 	}
+	
+	
 
 }

@@ -71,11 +71,11 @@ public class SSL_Test03 {
 
 						SSL_Endpoint serverEndPoint = new SSL_Endpoint("server", 
 								serverInbound, serverOutbound, context, 
-								channel, 10,
+								channel, 1000000,
 								internal, true, true);
 
 						// start
-						serverEndPoint.resume();
+						serverEndPoint.start();
 					}
 					catch (InterruptedException | ExecutionException e) {
 						e.printStackTrace();
@@ -125,7 +125,7 @@ public class SSL_Test03 {
 
 		SSL_Endpoint client = new SSL_Endpoint("client",
 				clientInbound, clientOutbound, context, 
-				channel, 10,
+				channel, 1000000,
 				internal2, false, true);
 
 
@@ -133,7 +133,7 @@ public class SSL_Test03 {
 
 			@Override
 			public void run() {
-				client.resume();
+				client.start();
 			}
 		}).start();
 	}
