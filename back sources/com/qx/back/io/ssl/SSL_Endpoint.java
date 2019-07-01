@@ -16,32 +16,7 @@ import com.qx.back.io.ssl.outbound.SSL_Outbound;
 
 /**
  *
- * <p>
- * Endpoint implementing an SSLAsynchronousSocketChannel
- * </p>
- * <p>
- * <pre>
- *    
- * 				 	
- *              / \
- *             /   \
- *            /  |  \
- *           /   |   \
- *          /         \
- *         /     *     \
- *         -------------
  * 
- * </pre>
- * <p>
- * DO NOT ENGAGE in channel.write(...) directly since JAVA implementation can use a dirty hack.
- * Internal InvokeDirect within AsynchronousSocketChannel.write method can almost randomly
- * break the asynchronous nature of the call and therefore produce callstacking of a DIRECT write 
- * (general idea behind is that if write can be done directly, better to save thread).
- * </p>
- * <p>
- * In any case, you cannot trust write to cut callstack and must rely on another mechanism. The one 
- * implemented here is using an internal ExecutorService.
- * </p>
  * 
  * @author pc
  */

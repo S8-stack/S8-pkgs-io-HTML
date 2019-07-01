@@ -277,6 +277,7 @@ public class Wrapping extends SSL_OutboundMode {
 							return pushing.new Task();		
 						}
 						else { // everything has been pushed
+							outbound.stop();
 							return null; // go back to idle state
 						}
 					}
@@ -351,7 +352,7 @@ public class Wrapping extends SSL_OutboundMode {
 		ByteBuffer extendedBuffer = ByteBuffer.allocate(increasedSize);
 		networkBuffer.flip();
 		extendedBuffer.put(networkBuffer);
-		extendedBuffer.compact(); // left in write mode
+		//extendedBuffer.compact(); // left in write mode
 		
 		// publish new network buffer
 		outbound.setNetworkBuffer(extendedBuffer);

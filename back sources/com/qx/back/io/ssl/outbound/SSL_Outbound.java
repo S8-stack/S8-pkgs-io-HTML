@@ -34,7 +34,7 @@ public class SSL_Outbound {
 	 * security margin up to: 2^14+2^10 = 17408.
 	 * Replace by 2^15 (for beauty purposes)
 	 */
-	public final static int APPLICATION_OUTPUT_STARTING_CAPACITY = 32768;
+	public final static int APPLICATION_OUTPUT_STARTING_CAPACITY = 17408;
 
 
 	public AsynchronousSocketChannel channel;
@@ -51,7 +51,7 @@ public class SSL_Outbound {
 	 * Typical required NETWORK_OUTPUT_STARTING_CAPACITY is 16709. Instead, we add 
 	 * security margin up to: 2^14+2^10 = 17408
 	 */
-	public final static int NETWORK_OUTPUT_STARTING_CAPACITY = 32768;
+	public final static int NETWORK_OUTPUT_STARTING_CAPACITY = 17408;
 
 
 	private AtomicBoolean isRunning;

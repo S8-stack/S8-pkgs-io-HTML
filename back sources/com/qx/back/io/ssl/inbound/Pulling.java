@@ -11,7 +11,47 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 
-
+/**
+ * 
+ * <pre>
+ * maximum number of completion handlers that may be invoked on the current
+    // thread before it re-directs invocations to the thread pool. This helps
+    // avoid stack overflow and lessens the risk of starvation.
+    private static final int maxHandlerInvokeCount = AccessController.doPrivileged(
+        new GetIntegerAction("sun.nio.ch.maxCompletionHandlersOnStack", 16));
+ * </pre>
+ * 
+ * <p>
+ * Endpoint implementing an SSLAsynchronousSocketChannel
+ * </p>
+ * <p>
+ * <pre>
+ *    
+ * 				 	
+ *              / \
+ *             /   \
+ *            /  |  \
+ *           /   |   \
+ *          /         \
+ *         /     *     \
+ *         -------------
+ * 
+ * </pre>
+ * <p>
+ * DO NOT ENGAGE in channel.write(...) directly since JAVA implementation can use a dirty hack.
+ * Internal InvokeDirect within AsynchronousSocketChannel.write method can almost randomly
+ * break the asynchronous nature of the call and therefore produce callstacking of a DIRECT write 
+ * (general idea behind is that if write can be done directly, better to save thread).
+ * </p>
+ * <p>
+ * In any case, you cannot trust write to cut callstack and must rely on another mechanism. The one 
+ * implemented here is using an internal ExecutorService.
+ * </p>
+ * 
+ * 
+ * @author pc
+ *
+ */
 class Pulling extends SSL_InboundMode {
 
 
@@ -22,7 +62,7 @@ class Pulling extends SSL_InboundMode {
 	private AsynchronousSocketChannel channel;
 
 	private long timeout;
-	
+
 	private SSL_Inbound inbound;
 
 	private Unwrapping unwrapping;
@@ -37,10 +77,10 @@ class Pulling extends SSL_InboundMode {
 
 	@Override
 	public void bind(SSL_Inbound inbound) {
-		
+
 		this.name = inbound.name;
 		this.inbound = inbound;
-		
+
 		// setup
 		this.engine = inbound.engine;
 		this.channel = inbound.channel;
@@ -49,17 +89,17 @@ class Pulling extends SSL_InboundMode {
 		// other states
 		this.unwrapping = inbound.unwrapping;
 		this.closing = inbound.closing;
-		
+
 		isVerbose = inbound.isVerbose;
 	}
 
-	
+
 	public class Task extends SSL_InboundMode.Task {
-	
+
 		public Task() {
 			super();
 		}
-		
+
 		@Override
 		public SSL_InboundMode.Task run() {
 
@@ -137,12 +177,12 @@ class Pulling extends SSL_InboundMode {
 			return null;
 
 		}
-		
+
 	}
 
 	public void setNetworkBuffer(ByteBuffer buffer) {
 		networkBuffer = buffer;
 	}
-	
+
 
 }
