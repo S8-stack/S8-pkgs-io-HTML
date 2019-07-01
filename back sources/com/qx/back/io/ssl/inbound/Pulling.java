@@ -63,17 +63,15 @@ class Pulling extends SSL_InboundMode {
 		@Override
 		public SSL_InboundMode.Task run() {
 
-			/*
-			 * Can start directly (protected by SSL_Inbound isRunning atomic boolean)
-			 */
+			/* Can start directly (protected by SSL_Inbound isRunning atomic boolean) */
 			if(isVerbose) {
 				System.out.println("\t--->"+name+" is pulling... ");
 			}
 
 			try {
 
-				/*
-				 * prepare for reception. From javadoc: "this method after writing data from a
+				/* 
+				 * Prepare for reception. From javadoc: "this method after writing data from a
 				 * buffer in case the write was incomplete" -> is always the case: 1) Underflow
 				 * : incomplete packet 2) OK: successfully read this packet, but reading next
 				 * packet is required

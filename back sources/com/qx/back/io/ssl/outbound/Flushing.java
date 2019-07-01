@@ -59,6 +59,8 @@ public class Flushing extends SSL_OutboundMode {
 
 						@Override
 						public void completed(Integer nBytes, Void attachment) {
+							
+							boolean isFlushed = !networkBuffer.hasRemaining();
 
 							/* 
 							 * Everything might not have been written, 
@@ -72,9 +74,17 @@ public class Flushing extends SSL_OutboundMode {
 								}
 								// end up here
 							}
+							else if(isFlushed){
+								/*
+								 *  Once all bytes has been flushed to the network, callback
+								 */
+								outbound.run(callback);
+							}
+							
 							else {
 								// keep flushing until all is gone
 								outbound.run(Flushing.Task.this);
+								
 							}
 						}
 
@@ -94,13 +104,7 @@ public class Flushing extends SSL_OutboundMode {
 					return null;
 				}
 			}
-			/*
-			 *  Once all bytes has been flushed to the network, callback
-			 */
-			else {
-				return callback;
-			}
-			return null; // default
+			return null; // stop here and restart with AIO
 		}
 
 	}

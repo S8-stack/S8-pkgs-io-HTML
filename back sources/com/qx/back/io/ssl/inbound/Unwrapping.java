@@ -16,12 +16,12 @@ public class Unwrapping extends SSL_InboundMode {
 	private QxIOReactive receiver;
 
 	private Pulling pulling;
-	
+
 	private Closing closing;
-	
-	private RequestWrapping requestWrapping;
-	
-	private RunningTask delegatesRunning;
+
+	private WrapRequesting requestWrapping;
+
+	private RunningDelegates delegatesRunning;
 
 	private SSLEngine engine;
 
@@ -33,7 +33,7 @@ public class Unwrapping extends SSL_InboundMode {
 
 
 	private SSL_Inbound inbound;
-	
+
 	private SSL_Outbound outbound;
 
 
@@ -61,9 +61,11 @@ public class Unwrapping extends SSL_InboundMode {
 
 
 				// if nothing to read in network buffer, go back to pulling
+				/*
 				if(!networkBuffer.hasRemaining()) {
 					return pulling.new Task();
 				}
+				 */
 
 				SSLEngineResult	result = engine.unwrap(networkBuffer, applicationBuffer);
 
@@ -71,80 +73,172 @@ public class Unwrapping extends SSL_InboundMode {
 					System.out.println(name+": "+result);
 				}
 
-				switch(result.getStatus()) {
-
-				/* 
-				 * The SSLEngine was not able to unwrap the incoming data because there 
-				 * were not enough source bytes available to make a complete packet. Since
-				 * applicationInput
-				 */
-				case BUFFER_OVERFLOW:
-
-					/* networkInput seems to be sufficiently filled, so must be under-sized */
-					if(isNetworkInputHalfFilled()) {
-						doubleNetworkInputCapacity();
-					}
-					/*
-					 * In any case, just need to pull more bytes from network 
-					 * (/!\ without flashing current ones)
-					 */
-					// asynchronous, so stop unwrapping and resume on AIO completion
-
-					// need more data, so pull
-					return pulling.new Task(); // (immediate next action)
-
-
-					/*
-					 * SSLEngine was not able to process the operation because there 
-					 * are not enough bytes available in the destination buffer 
-					 * (ApplicationInput) to hold the result.
-					 */	
-				case BUFFER_UNDERFLOW:
-
-					// so double destination buffer ...
-					doubleApplicationInputBufferCapacity();
-
-					// ... and retry
-					return this; // (immediate next action)
-
-				case CLOSED: 
-					// this side has been closed, so initiate closing
-					return closing.new Task(); // (immediate next action)
-
-				case OK:
-					// everything is fine, so process normally
-					break;
+				// drain as soon as bytes available
+				if(result.bytesProduced()>0) {
+					drain();
 				}
-
 
 				switch(result.getHandshakeStatus()) {
 
 				/* From javadoc:
 				 * The SSLEngine needs to receive data from the remote side before handshaking can continue.
 				 */
-				case NEED_UNWRAP: return pulling.new Task();
+				case NEED_UNWRAP: 
 
-				/*
-				 * From java doc: The SSLEngine needs to unwrap before handshaking can continue.
-				 */
-				case NEED_UNWRAP_AGAIN: return this;
+					switch(result.getStatus()) {
 
-				/*
-				 * (From java doc): The SSLEngine must send data to the remote side before
-				 * handshaking can continue, so SSLEngine.wrap() should be called.
-				 */
-				case NEED_WRAP: return requestWrapping.new Task();
+					/* 
+					 * The SSLEngine was not able to unwrap the incoming data because there 
+					 * were not enough source bytes available to make a complete packet. Since
+					 * applicationInput
+					 */
+					case BUFFER_UNDERFLOW:
+
+						/* networkInput seems to be sufficiently filled, so must be under-sized */
+						if(isNetworkInputHalfFilled()) {
+							doubleNetworkInputCapacity();
+						}
+						/*
+						 * In any case, just need to pull more bytes from network 
+						 * (/!\ without flashing current ones)
+						 */
+						// asynchronous, so stop unwrapping and resume on AIO completion
+
+						// need more data, so pull
+						return pulling.new Task(); // (immediate next action)
 
 
-				/*
-				 * (From java doc): The SSLEngine needs the results of one (or more) delegated
-				 * tasks before handshaking can continue.
-				 */
-				case NEED_TASK: return delegatesRunning.new Task();
+						/*
+						 * SSLEngine was not able to process the operation because there 
+						 * are not enough bytes available in the destination buffer 
+						 * (ApplicationInput) to hold the result.
+						 */	
+					case BUFFER_OVERFLOW:
 
-				/*
-				 * From java doc: The SSLEngine has just finished handshaking.
-				 */
+						// so double destination buffer ...
+						doubleApplicationInputBufferCapacity();
+
+						// ... and retry
+						return this; // (immediate next action)
+
+					case CLOSED: 
+						// this side has been closed, so initiate closing
+						return closing.new Task(); // (immediate next action)
+
+					case OK:
+						// everything is fine, so process normally
+						break;
+					}
+
+					// default behaviour:
+					return this; //pulling.new Task();
+
+					/*
+					 * From java doc: The SSLEngine needs to unwrap before handshaking can continue.
+					 */
+				case NEED_UNWRAP_AGAIN: 
+
+					switch(result.getStatus()) {
+
+					/* 
+					 * The SSLEngine was not able to unwrap the incoming data because there 
+					 * were not enough source bytes available to make a complete packet. Since
+					 * applicationInput
+					 */
+					case BUFFER_UNDERFLOW:
+
+						/* networkInput seems to be sufficiently filled, so must be under-sized */
+						if(isNetworkInputHalfFilled()) {
+							doubleNetworkInputCapacity();
+						}
+						/*
+						 * In any case, just need to pull more bytes from network 
+						 * (/!\ without flashing current ones)
+						 */
+						// asynchronous, so stop unwrapping and resume on AIO completion
+
+						// need more data, so pull
+						break; // retry unwrapping (NEED_UNWRAP_AGAIN > BUFFER_UNDERFLOW)
+
+
+						/*
+						 * SSLEngine was not able to process the operation because there 
+						 * are not enough bytes available in the destination buffer 
+						 * (ApplicationInput) to hold the result.
+						 */	
+					case BUFFER_OVERFLOW:
+
+						// so double destination buffer ...
+						doubleApplicationInputBufferCapacity();
+
+						// ... and retry
+						break; // (immediate next action)
+
+					case CLOSED: 
+						// this side has been closed, so initiate closing
+						return closing.new Task(); // (immediate next action)
+
+					case OK:
+						// everything is fine, so process normally
+						break;
+					}
+
+					// default behaviour
+					return this;
+
+					/*
+					 * (From java doc): The SSLEngine must send data to the remote side before
+					 * handshaking can continue, so SSLEngine.wrap() should be called.
+					 */
+				case NEED_WRAP: 
+
+					switch(result.getStatus()) {
+
+					// discarded as NEED_WRAP>BUFFER_UNDERFLOW;
+					case BUFFER_UNDERFLOW: break;
+
+					// discarded as NEED_WRAP>BUFFER_OVERFLOW;
+					case BUFFER_OVERFLOW: break; 
+
+					case CLOSED: 
+						// this side has been closed, so initiate closing
+						return closing.new Task(); // (immediate next action)
+
+					case OK:
+						// everything is fine, so process normally
+						break;
+					}
+
+					// default behaviour
+					return requestWrapping.new Task();
+
+
+					/*
+					 * (From java doc): The SSLEngine needs the results of one (or more) delegated
+					 * tasks before handshaking can continue.
+					 */
+				case NEED_TASK: 
+
+					switch(result.getStatus()) {
+
+					// discarded as NEED_TASK>BUFFER_UNDERFLOW;
+					case BUFFER_UNDERFLOW: break;
+
+					// discarded as NEED_TASK>BUFFER_OVERFLOW;
+					case BUFFER_OVERFLOW: break; 
+
+					case CLOSED: 
+						// this side has been closed, so initiate closing
+						return closing.new Task(); // (immediate next action)
+
+					case OK: break;
+					}
+					// default behaviour
+					return delegatesRunning.new Task();
+
+					/*
+					 * From java doc: The SSLEngine has just finished handshaking.
+					 */
 				case FINISHED:
 
 					/*
@@ -157,27 +251,52 @@ public class Unwrapping extends SSL_InboundMode {
 
 				case NOT_HANDSHAKING: 
 
+					switch(result.getStatus()) {
 
 					/* 
-					 * ALWAYS drain to supply the upper layer with app data
-					 * as EARLY as possible
+					 * The SSLEngine was not able to unwrap the incoming data because there 
+					 * were not enough source bytes available to make a complete packet. Since
+					 * applicationInput
 					 */
-					// <drain>
-					if(result.bytesProduced()>0) {
+					case BUFFER_UNDERFLOW:
 
-						// flip buffer to prepare reading (see SSL_EndPoint.onReceived contract).
-						/* application input buffer -> WRITE */
-						applicationBuffer.flip();
+						/* networkInput seems to be sufficiently filled, so must be under-sized */
+						if(isNetworkInputHalfFilled()) {
+							doubleNetworkInputCapacity();
+						}
+						/*
+						 * In any case, just need to pull more bytes from network 
+						 * (/!\ without flashing current ones)
+						 */
+						// asynchronous, so stop unwrapping and resume on AIO completion
 
-						// apply
-						// we ignore the fact that receiver can potentially read more bytes
-						receiver.on(applicationBuffer);
+						// need more data, so pull
+						return pulling.new Task(); // (immediate next action)
 
-						// since endPoint.onReceived read ALL data, nothing left, so clear
-						/* application input buffer -> READ */
-						applicationBuffer.clear();	
+
+						/*
+						 * SSLEngine was not able to process the operation because there 
+						 * are not enough bytes available in the destination buffer 
+						 * (ApplicationInput) to hold the result.
+						 */	
+					case BUFFER_OVERFLOW:
+
+						// so double destination buffer ...
+						doubleApplicationInputBufferCapacity();
+
+						// ... and retry
+						return this; // (immediate next action)
+
+					case CLOSED: 
+						// this side has been closed, so initiate closing
+						return closing.new Task(); // (immediate next action)
+
+					case OK:
+						// everything is fine, so process normally
+						break;
 					}
 
+					// default behaviour:
 					return this;
 
 				}
@@ -191,11 +310,30 @@ public class Unwrapping extends SSL_InboundMode {
 		}
 
 
-	
+		/**
+		 * ALWAYS drain to supply the upper layer with app data
+		 * as EARLY as possible
+		 */
+		private void drain() {
+
+			// flip buffer to prepare reading (see SSL_EndPoint.onReceived contract).
+			/* application input buffer -> WRITE */
+			applicationBuffer.flip();
+
+			// apply
+			// we ignore the fact that receiver can potentially read more bytes
+			receiver.on(applicationBuffer);
+
+			// since endPoint.onReceived read ALL data, nothing left, so clear
+			/* application input buffer -> READ */
+			applicationBuffer.clear();	
+
+		}
+
 
 	}
 
-	
+
 
 
 	@Override
@@ -217,10 +355,13 @@ public class Unwrapping extends SSL_InboundMode {
 		requestWrapping = inbound.requestWrapping;
 		delegatesRunning = inbound.delegatesRunning;
 	}
-	
+
+
+
 	private boolean isNetworkInputHalfFilled() {
 		return networkBuffer.position()>networkBuffer.capacity()/2;
 	}
+
 
 
 	private void doubleNetworkInputCapacity() throws SSLException {
@@ -242,8 +383,8 @@ public class Unwrapping extends SSL_InboundMode {
 		extendedBuffer.put(networkBuffer);
 		inbound.setNetworkBuffer(extendedBuffer);
 	}
-	
-	
+
+
 	private void doubleApplicationInputBufferCapacity() throws SSLException {
 		int increasedSize = 2 * applicationBuffer.capacity();
 		if (isVerbose) {
@@ -253,7 +394,8 @@ public class Unwrapping extends SSL_InboundMode {
 
 		if (increasedSize > 4 * engine.getSession().getApplicationBufferSize()) {
 			throw new SSLException(
-					"[SSL_Inbound] networkInput capacity is now 4x getApplicationBufferSize. " + "Seen as excessive");
+					"[SSL_Inbound] Application buffer capacity is now "
+							+ "4x getApplicationBufferSize. " + "Seen as excessive");
 		}
 
 		ByteBuffer extendedBuffer = ByteBuffer.allocate(increasedSize);
@@ -261,11 +403,11 @@ public class Unwrapping extends SSL_InboundMode {
 		extendedBuffer.put(applicationBuffer);
 		inbound.setApplicationBuffer(extendedBuffer);
 	}
-	
+
 	public void setNetworkBuffer(ByteBuffer buffer) {
 		this.networkBuffer = buffer;
 	}
-	
+
 	public void setApplicationBuffer(ByteBuffer buffer) {
 		this.applicationBuffer = buffer;
 	}

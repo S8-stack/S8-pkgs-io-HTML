@@ -4,7 +4,7 @@ import java.util.concurrent.ExecutorService;
 
 import javax.net.ssl.SSLEngine;
 
-public class RunningTask extends SSL_InboundMode {
+public class RunningDelegates extends SSL_InboundMode {
 
 	
 	private SSLEngine engine;
@@ -12,27 +12,18 @@ public class RunningTask extends SSL_InboundMode {
 	public ExecutorService internalExecutor;
 	
 	private Unwrapping unwrapping;
+	
+	private String name;
 
 	private boolean isVerbose;
 	
 	private SSL_Inbound inbound;
 	
-	public RunningTask() {
+	public RunningDelegates() {
 		super();
 	}
 
-	@Override
-	public void bind(SSL_Inbound inbound) {
 
-		this.inbound = inbound;
-		
-		engine = inbound.engine;
-		internalExecutor = inbound.internalExecutor;
-		unwrapping = inbound.unwrapping;
-		
-		isVerbose = inbound.isVerbose;
-	}
-	
 	
 	public class Task extends SSL_InboundMode.Task {
 		
@@ -43,7 +34,7 @@ public class RunningTask extends SSL_InboundMode {
 
 			if(taskRunnable!=null) {
 				if(isVerbose) {
-					System.out.println("\trunning delegated task...");	
+					System.out.println("\t--->"+name+" is running delegated task...");	
 				}
 				internalExecutor.execute(new Runnable() {
 					
@@ -54,7 +45,7 @@ public class RunningTask extends SSL_InboundMode {
 						taskRunnable.run();
 						
 						// then try to run other task
-						inbound.run(RunningTask.Task.this);
+						inbound.run(RunningDelegates.Task.this);
 					}
 				});
 				return null; // stop here and wait for the task to awake back inbound
@@ -68,6 +59,18 @@ public class RunningTask extends SSL_InboundMode {
 		}	
 	}
 
-	
+	@Override
+	public void bind(SSL_Inbound inbound) {
+
+		this.inbound = inbound;
+		
+		engine = inbound.engine;
+		internalExecutor = inbound.internalExecutor;
+		unwrapping = inbound.unwrapping;
+		
+		isVerbose = inbound.isVerbose;
+		name = inbound.name;
+	}
+		
 
 }

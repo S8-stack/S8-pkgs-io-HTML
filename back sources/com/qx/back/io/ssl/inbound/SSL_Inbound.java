@@ -81,8 +81,8 @@ public class SSL_Inbound {
 	 * pre-defined modes
 	 */
 	public Pulling pulling;
-	public RequestWrapping requestWrapping;
-	public RunningTask delegatesRunning;
+	public WrapRequesting requestWrapping;
+	public RunningDelegates delegatesRunning;
 	public Unwrapping unwrapping;
 	public Closing closing;
 
@@ -114,10 +114,16 @@ public class SSL_Inbound {
 		name = endpoint.getName() + ".inbound";
 
 
+	}
+	
+	
+	public void bind() {
+		
+
 		// create modes
 		pulling = new Pulling();
-		requestWrapping = new RequestWrapping();
-		delegatesRunning = new RunningTask();
+		requestWrapping = new WrapRequesting();
+		delegatesRunning = new RunningDelegates();
 		unwrapping = new Unwrapping();
 		closing = new Closing();
 
@@ -141,11 +147,8 @@ public class SSL_Inbound {
 
 		/* </buffer> */
 
-
-
 		isRunning = new AtomicBoolean(false);
-
-
+		
 	}
 
 

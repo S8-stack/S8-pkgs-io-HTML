@@ -1,7 +1,6 @@
 package com.qx.back.io.ssl.inbound;
 
 abstract class SSL_InboundMode {
-
 	
 	public SSL_InboundMode() {
 		super();

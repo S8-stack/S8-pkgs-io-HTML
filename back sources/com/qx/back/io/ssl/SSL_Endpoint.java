@@ -118,6 +118,9 @@ public class SSL_Endpoint {
 				channel, timeout, internalExecutor, isVerbose);
 
 		phase =SSL_Phase.INITIAL_HANDSHAKE;
+		
+		inbound.bind();
+		outbound.bind();
 	}
 
 

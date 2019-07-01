@@ -61,7 +61,7 @@ public class SSL_Outbound {
 	public Flushing flushing;
 	public Closing closing;
 	public RunningDelegates runningTasks;
-	public RequestUnwrapping requestUnwrapping;
+	public UnwrapRequesting requestUnwrapping;
 
 
 
@@ -92,13 +92,15 @@ public class SSL_Outbound {
 		name = endpoint.getName()+".outbound";
 
 		/* <buffers> */
-
-
-
+	}
+	
+	
+	public void bind() {
+		
 		// create modes
 		pushing = new Pushing();
 		flushing = new Flushing();
-		requestUnwrapping = new RequestUnwrapping();
+		requestUnwrapping = new UnwrapRequesting();
 		runningTasks = new RunningDelegates();
 		wrapping = new Wrapping();
 		closing = new Closing();
@@ -118,20 +120,18 @@ public class SSL_Outbound {
 		ByteBuffer applicationBuffer = ByteBuffer.allocate(APPLICATION_OUTPUT_STARTING_CAPACITY);
 		applicationBuffer.position(0);
 		applicationBuffer.limit(0);
+		// left in read mode, empty
 		setApplicationBuffer(applicationBuffer);
 
 		/* </buffer> */
 
 		// set parameters
 		ByteBuffer networkBuffer = ByteBuffer.allocate(NETWORK_OUTPUT_STARTING_CAPACITY);		
-		networkBuffer.position(0);
-		networkBuffer.limit(0);
+		// left in write mode
 		setNetworkBuffer(networkBuffer);
 		
-
 		// initial setup
 		isRunning = new AtomicBoolean(false);
-
 	}
 
 	/**
@@ -168,7 +168,7 @@ public class SSL_Outbound {
 	 * <p>Available to SSL_OutboundMode ONLY </p>
 	 */
 	protected void stop() {
-		isRunning.set(true);
+		isRunning.set(false);
 	}
 
 
