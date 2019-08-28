@@ -10,9 +10,9 @@ import javax.net.ssl.SSLContext;
 import com.qx.io.ssl.SSL_Module;
 import com.qx.io.ssl.inbound.SSL_Inbound;
 import com.qx.io.ssl.outbound.SSL_Outbound;
-import com.qx.io.web.rx.RxWebClient;
-import com.qx.io.web.rx.RxWebEndpoint;
-import com.qx.io.web.rx.RxWebServer;
+import com.qx.io.web.rx.RxClient;
+import com.qx.io.web.rx.RxEndpoint;
+import com.qx.io.web.rx.RxServer;
 
 public class SSL_RoundTrip02 {
 
@@ -22,10 +22,10 @@ public class SSL_RoundTrip02 {
 		SSLContext context = SSL_Module.createContext("config/SSL_config.xml");
 
 
-		RxWebServer server = new RxWebServer(1336) {
+		RxServer server = new RxServer(1336) {
 
 			@Override
-			public RxWebEndpoint createEndpoint(Selector selector, SocketChannel socketChannel) throws IOException {
+			public RxEndpoint createEndpoint(Selector selector, SocketChannel socketChannel) throws IOException {
 
 				return new SSL_Endpoint_Impl02(
 						selector, socketChannel, 
@@ -55,10 +55,10 @@ public class SSL_RoundTrip02 {
 		};
 		
 
-		RxWebClient client = new RxWebClient("localhost", 1336) {
+		RxClient client = new RxClient("localhost", 1336) {
 
 			@Override
-			public RxWebEndpoint createEndpoint(Selector selector, SocketChannel socketChannel) throws IOException {
+			public RxEndpoint createEndpoint(Selector selector, SocketChannel socketChannel) throws IOException {
 				return new SSL_Endpoint_Impl02(
 						selector, socketChannel, 
 						new SSL_Inbound() {

@@ -11,7 +11,7 @@ import javax.net.ssl.SSLParameters;
 
 import com.qx.io.ssl.inbound.SSL_Inbound;
 import com.qx.io.ssl.outbound.SSL_Outbound;
-import com.qx.io.web.rx.RxWebEndpoint;
+import com.qx.io.web.rx.RxEndpoint;
 
 
 /**
@@ -20,7 +20,7 @@ import com.qx.io.web.rx.RxWebEndpoint;
  * 
  * @author pc
  */
-public abstract class SSL_Endpoint extends RxWebEndpoint {
+public abstract class SSL_Endpoint extends RxEndpoint {
 
 
 	public final static int TARGET_PACKET_SIZE = 4096; // 2^12
@@ -104,14 +104,20 @@ public abstract class SSL_Endpoint extends RxWebEndpoint {
 		return name;
 	}
 
+	
+	/**
+	 * <p>
+	 * Start the endpoint
+	 * </p>
+	 * <p>
+	 * This choice determines who begins the handshaking process as well as which
+	 * type of messages should be sent by each party. The method
+	 * setUseClientMode(boolean) configures the mode. Once the initial handshaking
+	 * has started, an SSLEngine can not switch between client and server modes,
+	 * even when performing renegotiations.
+	 * </p>
+	 */
 	public void start() {
-		/*
-		 * This choice determines who begins the handshaking process as well as which
-		 * type of messages should be sent by each party. The method
-		 * setUseClientMode(boolean) configures the mode. Once the initial handshaking
-		 * has started, an SSLEngine can not switch between client and server modes,
-		 * even when performing renegotiations.
-		 */
 		if(isServerSide) {
 			receive();
 		}
