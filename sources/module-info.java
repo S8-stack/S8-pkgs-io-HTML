@@ -13,4 +13,5 @@ module com.qx.io.ssl {
 
 	requires transitive com.qx.base;
 	requires transitive com.qx.lang.xml;
+	requires transitive com.qx.io.web.reactive;
 }

@@ -1,76 +1,35 @@
 package com.qx.io.ssl.inbound;
 
-import java.util.concurrent.ExecutorService;
+public class RunningDelegates extends SSL_Inbound.Mode {
 
-import javax.net.ssl.SSLEngine;
-
-public class RunningDelegates extends SSL_InboundMode {
-
+	private SSL_Inbound.Mode callback;
 	
-	private SSLEngine engine;
-
-	public ExecutorService internalExecutor;
-	
-	private Unwrapping unwrapping;
-	
-	private String name;
-
-	private boolean isVerbose;
-	
-	private SSL_Inbound inbound;
-	
-	public RunningDelegates() {
-		super();
-	}
-
-
-	
-	public class Task extends SSL_InboundMode.Task {
+	public RunningDelegates(SSL_Inbound inbound, SSL_Inbound.Mode callback) {
+		inbound.super();
 		
-		@Override
-		public SSL_InboundMode.Task run() {
-			
-			Runnable taskRunnable = engine.getDelegatedTask();
-
-			if(taskRunnable!=null) {
-				if(isVerbose) {
-					System.out.println("\t--->"+name+" is running delegated task...");	
-				}
-				internalExecutor.execute(new Runnable() {
-					
-					@Override
-					public void run() {
-						
-						// perform the task
-						taskRunnable.run();
-						
-						// then try to run other task
-						inbound.run(RunningDelegates.Task.this);
-					}
-				});
-				return null; // stop here and wait for the task to awake back inbound
-			}
-			else {
-				/*
-				 * Directly switch back to unwrapping
-				 */
-				return unwrapping.new Task();
-			}
-		}	
+		this.callback = callback;
 	}
+
 
 	@Override
-	public void bind(SSL_Inbound inbound) {
-
-		this.inbound = inbound;
-		
-		engine = inbound.engine;
-		internalExecutor = inbound.internalExecutor;
-		unwrapping = inbound.unwrapping;
-		
-		isVerbose = inbound.isVerbose;
-		name = inbound.name;
+	public String declare() {
+		return "is running delegated task...";
 	}
-		
+
+	
+	@Override
+	public void run(SSL_Inbound.Process process) {
+
+		Runnable taskRunnable = getEngine().getDelegatedTask();
+
+		if(taskRunnable!=null) {
+			
+			// perform the task
+			taskRunnable.run();
+
+			process.mode = callback;
+			process.isRunning = true;
+		}	
+	}
 
 }

@@ -1,69 +1,38 @@
 package com.qx.io.ssl.outbound;
 
-import java.util.concurrent.ExecutorService;
+public class RunningDelegates extends SSL_Outbound.Mode {
 
-import javax.net.ssl.SSLEngine;
 
-public class RunningDelegates extends SSL_OutboundMode {
+	private SSL_Outbound.Mode callback;
 
-	private boolean isVerbose;
-
-	private SSLEngine engine;
-
-	public ExecutorService internalExecutor;
-
-	private SSL_Outbound outbound;
-
-	public RunningDelegates() {
-		super();
+	public RunningDelegates(SSL_Outbound outbound, SSL_Outbound.Mode callback) {
+		outbound.super();
+		this.callback = callback;
 	}
+	
+	@Override
+	public String declare() {
+		return "is running delegates...";
+	}
+	
 
 	@Override
-	public void bind(SSL_Outbound outbound) {
-		this.outbound = outbound;
-		isVerbose = outbound.isVerbose;
-		engine = outbound.engine;
-		internalExecutor = outbound.internalExecutor;
-	}
+	public void run(SSL_Outbound.Process process) {
 
-	public class Task extends SSL_OutboundMode.Task {
-		
-		public SSL_OutboundMode.Task callback;
-		
-		public Task(SSL_OutboundMode.Task callback) {
-			super();
-			this.callback = callback;
-		}
-		
-		@Override
-		public SSL_OutboundMode.Task run() {
+		Runnable taskRunnable = getEngine().getDelegatedTask();
 
-			Runnable taskRunnable = engine.getDelegatedTask();
-
-			if(taskRunnable!=null) {
-				if(isVerbose) {
-					System.out.println("\trunning delegated task...");	
-				}
-				internalExecutor.execute(new Runnable() {
-
-					@Override
-					public void run() {
-
-						// perform the task
-						taskRunnable.run();
-
-						// then try to run other task
-						outbound.run(RunningDelegates.Task.this);
-					}
-				});
-				return null; // stop here and wait for the task to awake back inbound
+		if(taskRunnable!=null) {
+			if(isVerbose()) {
+				System.out.println("\trunning delegated task...");	
 			}
-			else {
-				/*
-				 * Directly switch back to callback
-				 */
-				return callback;
-			}
+			// perform the task
+			taskRunnable.run();
 		}
+
+		/*
+		 * Switch back to callback
+		 */
+		process.mode = callback;
+
 	}
 }

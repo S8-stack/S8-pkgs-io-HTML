@@ -1,17 +1,17 @@
 package com.qx.io.ssl;
 
 import java.io.IOException;
-import java.nio.channels.AsynchronousSocketChannel;
-import java.util.concurrent.ExecutorService;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLParameters;
 
-import com.qx.base.reactive.QxIOReactive;
 import com.qx.io.ssl.inbound.SSL_Inbound;
 import com.qx.io.ssl.outbound.SSL_Outbound;
+import com.qx.io.web.rx.RxWebEndpoint;
 
 
 /**
@@ -20,31 +20,30 @@ import com.qx.io.ssl.outbound.SSL_Outbound;
  * 
  * @author pc
  */
-public class SSL_Endpoint {
+public class SSL_Endpoint extends RxWebEndpoint {
+
 
 	public final static int TARGET_PACKET_SIZE = 4096; // 2^12
+
+	//private RxWebEndpoint base;
 
 	private String name;
 
 	private boolean isServerSide;
 
-	protected SSL_Phase phase;
-	
-	public SSLEngine engine;
+	private SSL_Phase phase;
 
-	public AsynchronousSocketChannel channel;
+	private SSLEngine engine;
 
-	public ExecutorService internalExecutor;
+	private boolean isVerbose;
 
-	public boolean isVerbose;
+	private SSL_Inbound inbound;
 
-	public SSL_Inbound inbound;
-
-	public SSL_Outbound outbound;
+	private SSL_Outbound outbound;
 
 	public boolean isClosed;
-	
-	
+
+
 
 	/**
 	 * 
@@ -57,22 +56,27 @@ public class SSL_Endpoint {
 	 * @param executor
 	 * @param isServerSide
 	 * @param isVerbose
+	 * @throws IOException 
 	 */
 	public SSL_Endpoint(
+			Selector selector, SocketChannel socketChannel,
+			SSL_Inbound inbound,
+			SSL_Outbound outbound,
 			String name,
-			QxIOReactive receiver,
-			QxIOReactive sender,
 			SSLContext context,
-			AsynchronousSocketChannel channel,
-			long timeout,
-			ExecutorService executor,
 			boolean isServerSide,
-			boolean isVerbose) {
-		super();
+			boolean isVerbose) throws IOException {
+
+		super(selector, socketChannel, inbound, outbound);
+
+		// start inbound
+		this.inbound = inbound;
+
+		// start outbound
+		this.outbound = outbound;
+
 		this.name = name;
-		
-		this.channel = channel;
-		this.internalExecutor = executor;
+
 
 		// configuration
 		this.isServerSide = isServerSide;
@@ -84,19 +88,21 @@ public class SSL_Endpoint {
 		// engine
 		engine = createEngine(context, isServerSide);
 
-		// start inbound
-		inbound = new SSL_Inbound(receiver, this, engine, 
-				channel, timeout, internalExecutor, isVerbose);
-
-		// start outbound
-		outbound = new SSL_Outbound(sender, this, engine, 
-				channel, timeout, internalExecutor, isVerbose);
-
 		phase =SSL_Phase.INITIAL_HANDSHAKE;
-		
-		inbound.bind();
-		outbound.bind();
+
+		inbound.bind(this);
+		outbound.bind(this);
 	}
+
+	
+	public SSL_Inbound getInbound() {
+		return inbound;
+	}
+	
+	public SSL_Outbound getOutbound() {
+		return outbound;
+	}
+
 
 
 
@@ -113,16 +119,16 @@ public class SSL_Endpoint {
 		 * even when performing renegotiations.
 		 */
 		if(isServerSide) {
-			inbound.resume();		
+			receive();
 		}
 		else {
-			outbound.resume();	
+			send();
 		}
 	}
 
 	public void resume() {
-		inbound.resume();	
-		outbound.resume();
+		receive();	
+		send();
 	}
 
 
@@ -182,23 +188,19 @@ public class SSL_Endpoint {
 		return isServerSide;
 	}
 
+	@Override
 	public void close() {
+		super.close();
 		isClosed = true;
 	}
 
-	public void shutDown() {
-
-		// close channel
-		try {
-			channel.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 
 	public boolean isClosed() {
 		return isClosed;
 	}
-	
-	
+
+	public SSLEngine getEngine() {
+		return engine;
+	}
+
 }
