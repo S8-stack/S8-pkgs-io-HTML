@@ -20,7 +20,7 @@ import com.qx.io.web.rx.RxWebEndpoint;
  * 
  * @author pc
  */
-public class SSL_Endpoint extends RxWebEndpoint {
+public abstract class SSL_Endpoint extends RxWebEndpoint {
 
 
 	public final static int TARGET_PACKET_SIZE = 4096; // 2^12
@@ -37,9 +37,6 @@ public class SSL_Endpoint extends RxWebEndpoint {
 
 	private boolean isVerbose;
 
-	private SSL_Inbound inbound;
-
-	private SSL_Outbound outbound;
 
 	public boolean isClosed;
 
@@ -59,21 +56,15 @@ public class SSL_Endpoint extends RxWebEndpoint {
 	 * @throws IOException 
 	 */
 	public SSL_Endpoint(
-			Selector selector, SocketChannel socketChannel,
-			SSL_Inbound inbound,
-			SSL_Outbound outbound,
+			Selector selector, 
+			SocketChannel socketChannel,
 			String name,
 			SSLContext context,
 			boolean isServerSide,
 			boolean isVerbose) throws IOException {
 
-		super(selector, socketChannel, inbound, outbound);
+		super(selector, socketChannel);
 
-		// start inbound
-		this.inbound = inbound;
-
-		// start outbound
-		this.outbound = outbound;
 
 		this.name = name;
 
@@ -90,20 +81,23 @@ public class SSL_Endpoint extends RxWebEndpoint {
 
 		phase =SSL_Phase.INITIAL_HANDSHAKE;
 
-		inbound.bind(this);
-		outbound.bind(this);
 	}
 
-	
-	public SSL_Inbound getInbound() {
-		return inbound;
-	}
-	
-	public SSL_Outbound getOutbound() {
-		return outbound;
-	}
+	@Override
+	public abstract SSL_Inbound getInbound();
+
+	@Override
+	public abstract SSL_Outbound getOutbound();
 
 
+	public void SSL_bind() {
+
+		// sub-bind
+		rxBind();
+
+		getInbound().SSL_bind(this, engine);
+		getOutbound().SSL_bind(this, engine);
+	}
 
 
 	public String getName() {
@@ -199,8 +193,5 @@ public class SSL_Endpoint extends RxWebEndpoint {
 		return isClosed;
 	}
 
-	public SSLEngine getEngine() {
-		return engine;
-	}
 
 }

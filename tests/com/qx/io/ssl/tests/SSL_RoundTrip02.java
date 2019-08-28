@@ -7,7 +7,6 @@ import java.nio.channels.SocketChannel;
 
 import javax.net.ssl.SSLContext;
 
-import com.qx.io.ssl.SSL_Endpoint;
 import com.qx.io.ssl.SSL_Module;
 import com.qx.io.ssl.inbound.SSL_Inbound;
 import com.qx.io.ssl.outbound.SSL_Outbound;
@@ -28,12 +27,12 @@ public class SSL_RoundTrip02 {
 			@Override
 			public RxWebEndpoint createEndpoint(Selector selector, SocketChannel socketChannel) throws IOException {
 
-				return new SSL_Endpoint(
+				return new SSL_Endpoint_Impl02(
 						selector, socketChannel, 
 						new SSL_Inbound() {
 
 							@Override
-							public void onReceived(ByteBuffer buffer) {
+							public void SSL_onReceived(ByteBuffer buffer) {
 								int n = buffer.limit();
 								byte[] bytes = new byte[n];
 								buffer.get(bytes);
@@ -44,7 +43,7 @@ public class SSL_RoundTrip02 {
 							private int count = 0;
 
 							@Override
-							public void onSending(ByteBuffer buffer) {
+							public void SSL_onSending(ByteBuffer buffer) {
 								if(count<4) {
 									buffer.put("Hi! this is server side!!".getBytes());
 									count++;	
@@ -60,12 +59,12 @@ public class SSL_RoundTrip02 {
 
 			@Override
 			public RxWebEndpoint createEndpoint(Selector selector, SocketChannel socketChannel) throws IOException {
-				return new SSL_Endpoint(
+				return new SSL_Endpoint_Impl02(
 						selector, socketChannel, 
 						new SSL_Inbound() {
 
 							@Override
-							public void onReceived(ByteBuffer buffer) {
+							public void SSL_onReceived(ByteBuffer buffer) {
 								int n = buffer.limit();
 								byte[] bytes = new byte[n];
 								buffer.get(bytes);
@@ -76,7 +75,7 @@ public class SSL_RoundTrip02 {
 							private int count = 0;
 
 							@Override
-							public void onSending(ByteBuffer buffer) {
+							public void SSL_onSending(ByteBuffer buffer) {
 
 								byte[] messageBytes = "Hi this is client!!".getBytes();
 								if(count<4 && buffer.remaining()>messageBytes.length) {

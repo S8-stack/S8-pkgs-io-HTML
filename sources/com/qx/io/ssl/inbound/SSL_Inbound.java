@@ -46,7 +46,7 @@ public abstract class SSL_Inbound extends RxInbound {
 	private SSL_Outbound outbound;
 
 	private boolean isVerbose;
-	
+
 	private Mode callback;
 
 
@@ -72,30 +72,29 @@ public abstract class SSL_Inbound extends RxInbound {
 		new Process(startMode).launch();
 	}
 
-	public abstract void onReceived(ByteBuffer buffer);
+	public abstract void SSL_onReceived(ByteBuffer buffer);
 
-	public void bind(SSL_Endpoint endpoint) {
+	
+	public void SSL_bind(SSL_Endpoint endpoint, SSLEngine engine) {
 
+		// bind 0
 		this.endpoint = endpoint;
+		this.engine = engine;
 
-		engine = endpoint.getEngine();
-		isVerbose = endpoint.isVerbose();
-		outbound = endpoint.getOutbound();
-		name = endpoint.getName() + ".inbound";
+		this.isVerbose = endpoint.isVerbose();	
+		this.outbound = endpoint.getOutbound();
+		name = endpoint.getName()+".inbound";
 	}
 
 
-	
-
-
 	public class Process {
-		
+
 		// Next mode to be played
 		public Mode mode;
 
 		//Must be reset after use
 		public boolean isRunning = false;
-		
+
 		public Process(Mode mode) {
 			super();
 			this.mode = mode;
@@ -110,18 +109,18 @@ public abstract class SSL_Inbound extends RxInbound {
 			 * Note: Even if nothing has been written, we'll add so new bytes before retrying
 			 */
 			while(isRunning) {
-				
+
 				mode.advertise();
-				
+
 				mode.run(this);
 			}
-			
+
 			if(isVerbose) {
 				System.out.println("exiting process...");
 			}
-			
+
 		}
-		
+
 		/*
 		public void then(Mode nextMode) {
 			isRunning = true;
@@ -144,11 +143,11 @@ public abstract class SSL_Inbound extends RxInbound {
 			receive();
 			mode = nextMode;
 		}
-		*/
-		
+		 */
+
 	}
-	
-	
+
+
 
 	/**
 	 * External access handle
@@ -162,14 +161,14 @@ public abstract class SSL_Inbound extends RxInbound {
 		public Mode() {
 			super();
 		}
-		
-		
+
+
 		public void advertise() {
 			if(isVerbose) {
 				System.out.println("\t--->"+getName()+": "+declare());
 			}
 		}
-		
+
 		public abstract String declare();
 
 		/**
@@ -190,7 +189,7 @@ public abstract class SSL_Inbound extends RxInbound {
 
 			// apply
 			// we ignore the fact that receiver can potentially read more bytes
-			onReceived(applicationBuffer);
+			SSL_onReceived(applicationBuffer);
 
 			// since endPoint.onReceived read ALL data, nothing left, so clear
 			/* application input buffer -> READ */
@@ -239,7 +238,7 @@ public abstract class SSL_Inbound extends RxInbound {
 			return isVerbose;
 		}
 
-		
+
 
 
 		public Mode runDelegates(Mode callback) {
@@ -262,7 +261,7 @@ public abstract class SSL_Inbound extends RxInbound {
 			callback = mode;
 			receive();
 		}
-		
+
 		public void wrap() {
 			if(isVerbose) {
 				System.out.println("\t--->"+name+" is requesting wrap...");	

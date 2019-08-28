@@ -98,14 +98,14 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 
 
-	public void bind(SSL_Endpoint endpoint) {
-
+	public void SSL_bind(SSL_Endpoint endpoint, SSLEngine engine) {
+		
 		// bind 0
 		this.endpoint = endpoint;
-		this.engine = endpoint.getEngine();
+		this.engine = engine;
+		
 		this.isVerbose = endpoint.isVerbose();	
 		this.inbound = endpoint.getInbound();
-
 		name = endpoint.getName()+".outbound";
 	}
 
@@ -114,7 +114,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 	 * 
 	 * @param buffer
 	 */
-	public abstract void onSending(ByteBuffer buffer);
+	public abstract void SSL_onSending(ByteBuffer buffer);
 
 
 
@@ -191,7 +191,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 			applicationBuffer.compact();
 
 			/* peform the "pumping" operation */
-			onSending(applicationBuffer);
+			SSL_onSending(applicationBuffer);
 
 			/* return to read mode */
 			applicationBuffer.flip();
