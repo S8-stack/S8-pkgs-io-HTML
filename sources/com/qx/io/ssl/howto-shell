@@ -1,5 +1,0 @@
-# Generate keystore (alt-1)
-keytool -genkey -alias server-alias -keyalg RSA -keypass rDfe4_!xef -storepass rDfe4_!xef -keystore keystore.jks
-
-# Generate keystore (alt-2)
-keytool -genkey -keyalg RSA -keystore keystore.jks

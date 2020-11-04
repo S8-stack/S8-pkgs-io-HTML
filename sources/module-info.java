@@ -1,17 +1,3 @@
-/**
- * 
- */
-/**
- * @author pc
- *
- */
-module com.qx.io.ssl {
-	
-	exports com.qx.io.ssl.inbound;
-	exports com.qx.io.ssl.outbound;
-	exports com.qx.io.ssl;
+module com.qx.io.html {
 
-	requires transitive com.qx.base;
-	requires transitive com.qx.lang.xml;
-	requires transitive com.qx.io.web.reactive;
 }
