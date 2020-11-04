@@ -17,9 +17,9 @@ public class HTML_Table01 extends HTML_Block {
 	
 	private List<String[]> body;
 	
-	public static final DecimalFormat F01 = new DecimalFormat("0.00");
+	public static final DecimalFormat STANDARD = new DecimalFormat("0.00");
 	
-	public static final DecimalFormat F02 = new DecimalFormat("0.00E0");
+	public static final DecimalFormat SCIENTIFIC = new DecimalFormat("0.00E0");
 
 	
 	public HTML_Table01(String name) {
@@ -43,19 +43,11 @@ public class HTML_Table01 extends HTML_Block {
 	 * @param value
 	 * @param unit
 	 */
-	public void pushF01(String name, String symbol, double value, String abbreviation) {
-		body.add(new String[] {name, symbol, F01.format(value), abbreviation });
+	public void append(String name, String symbol, double value, DecimalFormat format, String unitAbbreviation) {
+		body.add(new String[] { name, symbol, format.format(value), unitAbbreviation});
 	}
 
-	public void pushF02(String name, String symbol, double value, String abbreviation) {
-		body.add(new String[] { name, symbol, F02.format(value), abbreviation });
-	}
-
-	public void push(String name, String symbol, int value) {
-		body.add(new String[] { name, symbol, Integer.toString(value), "-" });
-	}
-
-	public void push(String name, String value) {
+	public void append(String name, String value) {
 		body.add(new String[] { name, "-", value, "-" });
 	}
 
@@ -89,4 +81,5 @@ public class HTML_Table01 extends HTML_Block {
 		writer.write("</tbody>");
 		writer.write("</table>");
 	}
+
 }

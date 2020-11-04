@@ -29,6 +29,11 @@ public class HTML_Page {
 		}
 	}
 
+	/**
+	 * 
+	 * @param pathname
+	 * @throws IOException
+	 */
 	public void print(String pathname) throws IOException {
 		Writer writer = new OutputStreamWriter(new FileOutputStream(new File(pathname)));
 		writer.append("<!DOCTYPE html>\n");
@@ -44,6 +49,11 @@ public class HTML_Page {
 	}
 
 	
+	/**
+	 * 
+	 * @return
+	 * @throws IOException
+	 */
 	private String getHeader() throws IOException {
 		InputStream inputStream = HTML_Page.class.getResourceAsStream("head.html");
 		StringBuilder builder = new StringBuilder();
