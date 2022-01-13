@@ -57,7 +57,7 @@ public class HTML_Table01 extends HTML_Block {
 		writer.write("<table class=\"table01\">");
 
 		writer.write("<thead>");
-		writer.write("<tr><td colspan:\"4\">" + name + "</td><td></td><td></td><td></td></tr>");
+		writer.write("<tr><td colspan=\"4\">" + name + "</td></tr>");
 		writer.write("</tr>");
 		for (String cell : header) {
 			writer.write("<td>");

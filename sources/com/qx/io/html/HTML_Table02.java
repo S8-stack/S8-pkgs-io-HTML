@@ -6,14 +6,50 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+/**
+ * 
+ * @author pierreconvert
+ *
+ */
 public class HTML_Table02 extends HTML_Block {
 
+	
+	/**
+	 * 
+	 */
 	private int n;
+	
+	
+	/**
+	 * 
+	 */
 	private String title;
+	
+	
+	/**
+	 * 
+	 */
 	private String[] columnNames;
+	
+	
+	/**
+	 * 
+	 */
 	private String[] columnComments;
+	
+	
+	/**
+	 * 
+	 */
 	private List<String[]> body;
 
+	
+	/**
+	 * 
+	 * @param title
+	 * @param columnNames
+	 * @param columnComments
+	 */
 	public HTML_Table02(String title, String[] columnNames, String[] columnComments) {
 		this.title = title;
 		this.columnNames = columnNames;
@@ -23,12 +59,17 @@ public class HTML_Table02 extends HTML_Block {
 	}
 
 
+	/**
+	 * 
+	 * @param row
+	 */
 	public void push(String[] row) {
 		if (row.length != n) {
 			throw new RuntimeException("Wrong number of cells while inserting new row in Table02");
 		}
 		body.add(row);
 	}
+	
 
 	@Override
 	public void print(Writer writer) throws IOException {
@@ -37,10 +78,7 @@ public class HTML_Table02 extends HTML_Block {
 		writer.write("<thead>");
 
 		writer.write("<tr>");
-		writer.write("<td colspan:\"" + n + "\">" + title + "</td>");
-		for (int i = 0; i < n - 1; i++) {
-			writer.write("<td></td>");
-		}
+		writer.write("<td colspan=\"" + n + "\">" + title + "</td>");
 		writer.write("</tr>");
 
 

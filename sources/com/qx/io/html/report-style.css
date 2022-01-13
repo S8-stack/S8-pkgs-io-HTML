@@ -3,6 +3,7 @@
 table {
 	border-collapse: collapse;
 	border-spacing: 0;
+	border: 1px solid #ccc;
 	font-family: Verdana,sans-serif;
     font-size: 12px;
     line-height: 1.2;
@@ -12,7 +13,7 @@ table {
 
 table>thead>tr:nth-child(1) {
 	border-top: 1px solid #ccc;
-	color: red;
+	color: #484fab;
 	font-weight: bold;
 	font-size: 16px;
 }
@@ -21,8 +22,6 @@ table>thead>tr:nth-child(1) {
 	background-color: #7e7e8c;
 	color: white;
 }
-
-
 
 .table02>thead>tr:nth-child(2) {
 	background-color: #7e7e8c;
