@@ -15,6 +15,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+
+/**
+ * 
+ * @author pierreconvert
+ *
+ */
 public class HTML_Page {
 
 	private List<HTML_Block> blocks;

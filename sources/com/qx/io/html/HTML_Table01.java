@@ -9,6 +9,11 @@ import java.util.List;
 
 
 
+/**
+ * 
+ * @author pierreconvert
+ *
+ */
 public class HTML_Table01 extends HTML_Block {
 
 	private String name;

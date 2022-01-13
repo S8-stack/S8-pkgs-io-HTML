@@ -5,6 +5,11 @@ import java.io.IOException;
 import java.io.Writer;
 
 
+/**
+ * 
+ * @author pierreconvert
+ *
+ */
 public class HTML_Header1 extends HTML_Block {
 
 	private String title;

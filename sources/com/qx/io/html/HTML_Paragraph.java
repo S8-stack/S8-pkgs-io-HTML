@@ -3,8 +3,14 @@ package com.qx.io.html;
 import java.io.IOException;
 import java.io.Writer;
 
-public class HTML_Paragraph extends HTML_Block
-{
+
+/**
+ * 
+ * @author pierreconvert
+ *
+ */
+public class HTML_Paragraph extends HTML_Block {
+
   private String text;
   
   public HTML_Paragraph(String text)

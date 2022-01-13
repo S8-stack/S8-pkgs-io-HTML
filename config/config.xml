@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<HTTPS_server>
-	<port>1336</port>
-	<keystore_password>rDfe4_!xef</keystore_password>
-	<is_verbose>false</is_verbose>
-	<socket_backlog>50</socket_backlog>
-	<threads_pool_size>128</threads_pool_size>
-</HTTPS_server>
