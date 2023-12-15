@@ -1,4 +1,5 @@
-module com.qx.io.html {
 
-	exports com.qx.io.html;
+module com.s8.pkgs.io.html {
+
+	exports com.s8.pkgs.io.html;
 }

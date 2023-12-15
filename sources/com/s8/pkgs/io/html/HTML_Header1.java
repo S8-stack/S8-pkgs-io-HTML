@@ -1,4 +1,4 @@
-package com.qx.io.html;
+package com.s8.pkgs.io.html;
 
 
 import java.io.IOException;
